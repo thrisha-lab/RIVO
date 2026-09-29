@@ -10,6 +10,10 @@ import type {
   AIExplanation,
   RiderIdentity,
   RiskLevel,
+  ForecastData,
+  HistoryRecord,
+  HistoryStats,
+  LeaderboardEntry,
 } from "@/lib/types";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -101,6 +105,22 @@ export const api = {
     originLabel?: string;
     destLabel?: string;
   }) => req<AIExplanation>("/api/ai/explain", { method: "POST", body: JSON.stringify(body) }),
+
+  forecast: (lat: number, lng: number, hours = 12) =>
+    req<ForecastData>(`/api/forecast?lat=${lat}&lng=${lng}&hours=${hours}`),
+
+  history: (limit = 20) => req<{ history: HistoryRecord[]; stats: HistoryStats | null }>(`/api/history?limit=${limit}`),
+
+  leaderboard: (limit = 10) => req<{ leaderboard: LeaderboardEntry[] }>(`/api/leaderboard?limit=${limit}`),
+
+  uploadHazardImage: async (file: File): Promise<{ imageUrl: string; filename: string; size: number; contentType: string }> => {
+    const form = new FormData();
+    form.append("image", file);
+    const res = await fetch("/api/hazards/upload", { method: "POST", body: form, credentials: "same-origin" });
+    const json = (await res.json()) as { ok: boolean; data?: { imageUrl: string; filename: string; size: number; contentType: string }; error?: string };
+    if (!json.ok) throw new Error(json.error ?? "Upload failed");
+    return json.data!;
+  },
 };
 
 export const RISK_META: Record<RiskLevel, { label: string; color: string; bg: string; ring: string; emoji: string }> = {

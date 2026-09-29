@@ -4,11 +4,10 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Siren, Loader2, CheckCircle2 } from "lucide-react";
+import { Siren, Loader2, CheckCircle2, ImagePlus, X, MapPin } from "lucide-react";
 import { api, HAZARD_LABEL } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -33,8 +32,41 @@ export default function HazardReportForm({ currentLocation, pinLocation, onCreat
   const [description, setDescription] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
 
   const loc = pinLocation ?? currentLocation;
+
+  const onFile = async (file: File) => {
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error("Image too large (max 4MB).");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      toast.error("Use JPEG, PNG, WebP, or GIF.");
+      return;
+    }
+    setUploading(true);
+    setPreviewUrl(URL.createObjectURL(file));
+    try {
+      const res = await api.uploadHazardImage(file);
+      setImageUrl(res.imageUrl);
+      toast.success("Image attached.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+      setPreviewUrl(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const clearImage = () => {
+    setImageUrl(null);
+    setPreviewUrl(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
   const submit = async () => {
     if (!loc) {
@@ -49,10 +81,12 @@ export default function HazardReportForm({ currentLocation, pinLocation, onCreat
         type,
         severity,
         description: description.trim() || undefined,
+        imageUrl: imageUrl ?? undefined,
       });
       toast.success("Hazard reported. Thanks for protecting fellow riders!");
       setSuccess(true);
       setDescription("");
+      clearImage();
       setTimeout(() => setSuccess(false), 2500);
       onCreated();
     } catch (e) {
@@ -100,7 +134,7 @@ export default function HazardReportForm({ currentLocation, pinLocation, onCreat
             <Badge
               key={s}
               variant="outline"
-              className={`cursor-pointer capitalize ${severity === s ? `${SEV_COLOR[s]} text-white border-transparent` : ""}`}
+              className={`cursor-pointer capitalize transition ${severity === s ? `${SEV_COLOR[s]} text-white border-transparent` : "hover:bg-accent"}`}
               onClick={() => setSeverity(s)}
             >
               {s}
@@ -120,8 +154,52 @@ export default function HazardReportForm({ currentLocation, pinLocation, onCreat
           />
         </div>
 
-        <div className="rounded-md border bg-muted/40 p-2 text-xs">
-          <span className="text-muted-foreground">Pin location: </span>
+        {/* Image upload */}
+        <div className="space-y-1.5">
+          <Label className="text-xs">Photo (optional)</Label>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onFile(f);
+            }}
+          />
+          {previewUrl ? (
+            <div className="relative overflow-hidden rounded-lg border">
+              <img src={previewUrl} alt="hazard preview" className="h-32 w-full object-cover" />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white backdrop-blur transition hover:bg-black/80"
+                aria-label="Remove image"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+              {uploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex h-20 w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-xs text-muted-foreground transition hover:border-foreground/30 hover:bg-accent/40"
+            >
+              <ImagePlus className="h-5 w-5" />
+              <span>Tap to add a photo</span>
+              <span className="text-[10px]">JPEG, PNG, WebP · max 4MB</span>
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 rounded-md border bg-muted/40 p-2 text-xs">
+          <MapPin className="h-3 w-3 text-muted-foreground" />
+          <span className="text-muted-foreground">Pin: </span>
           {loc ? (
             <span className="font-mono">{loc.lat.toFixed(5)}, {loc.lng.toFixed(5)}</span>
           ) : (
@@ -129,9 +207,9 @@ export default function HazardReportForm({ currentLocation, pinLocation, onCreat
           )}
         </div>
 
-        <Button onClick={submit} disabled={submitting || !loc} className="w-full gap-1.5">
+        <Button onClick={submit} disabled={submitting || !loc || uploading} className="w-full gap-1.5">
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : success ? <CheckCircle2 className="h-4 w-4" /> : <Siren className="h-4 w-4" />}
-          {success ? "Reported!" : "Submit report"}
+          {submitting ? "Submitting…" : success ? "Reported!" : "Submit report"}
         </Button>
       </CardContent>
     </Card>

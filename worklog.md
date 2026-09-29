@@ -86,3 +86,66 @@ Files changed (key):
 - src/app/api/** (11 route files)
 - src/app/layout.tsx, src/app/page.tsx
 - src/components/{rider-map,risk-dashboard,weather-card,destination-search,gps-controls,hazard-report-form,community-feed,safe-stops-list,ai-explanation-panel,theme-provider}.tsx
+
+---
+Task ID: 2
+Agent: Z.ai Code (cron webDevReview — Phase 2)
+Task: Assess project status via agent-browser QA, fix bugs, add new features (forecast, history, leaderboard, image upload), and improve styling.
+
+Work Log:
+- Reviewed Phase 1 worklog. Project was stable: lint clean, tsc clean, all routes 200, no runtime errors.
+- agent-browser QA: verified golden path still works (GPS locate → destination search → risk compute → AI explain → hazard report → vote). No bugs found in existing functionality.
+- VLM design critique of Phase 1 UI identified opportunities: radial risk gauge, skeleton loaders, better empty states, button hierarchy, segmented tabs.
+
+New features built (backend):
+- `src/lib/forecast-service.ts`: Open-Meteo hourly forecast (12h) + best-departure-time recommender. Considers weather risk + late-night penalty + sooner-is-better tiebreak.
+- `src/app/api/forecast/route.ts`: GET /api/forecast?lat=&lng=&hours=12
+- `src/app/api/history/route.ts`: GET /api/history — past risk assessments for rider + aggregate stats (totalTrips, avgScore, worstScore, bestScore, levelCounts).
+- `src/app/api/leaderboard/route.ts`: GET /api/leaderboard — top riders by reputation.
+- `src/app/api/hazards/upload/route.ts`: POST multipart image upload (JPEG/PNG/WebP/GIF, max 4MB, SHA-256 content hash filename, saved to /home/z/my-project/download/hazards/).
+- `src/app/api/hazards/image/[filename]/route.ts`: GET streaming endpoint with strict filename validation (path-traversal-safe), 24h cache, content-type detection.
+- Improved `src/app/api/risk/route.ts`: weather now sampled at 3 points along route polyline (origin, midpoint, destination) using worst-case snapshot (max precip+gust+vis) so risk never under-reports on routes crossing weather boundaries. Added `pickSampleIndices` helper.
+
+New features built (frontend):
+- `src/components/risk-gauge.tsx`: Semi-circular radial gauge (speedometer style) with gradient arc, tick marks, animated needle, spring-animated score. Glanceable risk visualization.
+- `src/components/forecast-panel.tsx`: 12-hour forecast with (1) best-departure-time recommendation card, (2) animated hourly risk bar chart, (3) scrollable hourly detail list (temp, precip, wind, risk per hour).
+- `src/components/history-panel.tsx`: Trip history with stats tiles (trips/avg/worst/best) + scrollable list of past risk assessments with level-colored score badges and factor chips.
+- `src/components/leaderboard-panel.tsx`: Safety contributors leaderboard with rank medals (gold/silver/bronze), "you" highlight, reports/votes counts, reputation stars.
+- Upgraded `src/components/risk-dashboard.tsx`: now uses RiskGauge, quick-stat tiles (hazards/distance/rain), animated factor bars, gradient AI button, skeleton loading state, empty state with icon.
+- Upgraded `src/components/weather-card.tsx`: skeleton loading state, empty state with CloudOff icon, framer-motion fade-in.
+- Upgraded `src/components/community-feed.tsx`: skeleton loading, empty state with icon, hazard image thumbnails, framer-motion stagger animations, distance badges.
+- Upgraded `src/components/hazard-report-form.tsx`: image upload UI (file picker, drag-dash zone, preview, remove button, upload progress spinner, type/size validation).
+- Upgraded `src/app/page.tsx`: 5-tab layout (Feed/Stops/Report/History/Top), enhanced header with status dot + gradient logo, framer-motion route summary animation, ForecastPanel integration.
+- PWA: `public/manifest.json` + manifest/appleWebApp in layout metadata.
+
+Bug fix:
+- `src/components/ui/scroll-area.tsx`: ScrollArea root was missing `overflow-hidden` and viewport was missing `max-h-[inherit]`. This caused ScrollArea content (in forecast/feed panels) to overflow and visually cover elements below, making tabs unclickable. Fixed by adding `overflow-hidden` to root and `max-h-[inherit]` to viewport. Verified fix: elementFromPoint now correctly returns the tab element instead of the covering forecast tile.
+
+Verification (agent-browser E2E of Phase 2):
+- `bun run lint` → clean. `bunx tsc --noEmit` → 0 project errors.
+- Dev server: all new routes 200 (forecast, history, leaderboard, hazards/upload, hazards/image). No 500s, no runtime errors.
+- agent-browser verified:
+  1. Forecast panel loads: "Best time to depart: Today 6PM, risk 16/100" with hourly bar chart + detail list.
+  2. History tab: empty state → after computing risk → shows TRIPS=1, AVG=10, WORST=10, BEST=10 + detailed record with factors.
+  3. Leaderboard tab: shows ranked riders (Rider-46DF rank 1 ★2, Rider-SEED rank 2, etc.) with "you" highlight.
+  4. Image upload: selected file → preview shown → "Image attached." toast → POST /api/hazards/upload 200 → file saved to download/hazards/.
+  5. Radial risk gauge renders: score 16/100 with animated needle.
+  6. AI co-pilot: "Risk is low despite rain chance. Only minor road hazards reported. Dusk brings glare but manageable exposure." + 3 safety tips.
+  7. ScrollArea fix verified: tabs now clickable (elementFromPoint returns tab, not covering element).
+- VLM final review: 8/10 polish. Strengths: information architecture, visual clarity, contextual intelligence. Minor issues noted: marker legend, GPS toggle styling, contrast — acceptable for current phase.
+
+Stage Summary:
+- Phase 2 added 5 new features (forecast + best departure time, trip history, rider leaderboard, hazard image upload, route weather sampling) and significantly elevated visual polish (radial gauge, skeletons, animations, empty states, segmented tabs).
+- Fixed a real ScrollArea overflow bug that was blocking tab interaction.
+- All features verified end-to-end via agent-browser with zero errors.
+
+Known Limitations / Remaining:
+- OSRM public demo still used for routing (straight-line fallback when rate-limited).
+- No automated test suite yet (unit/E2E) — Phase 3 priority.
+- No WebSocket real-time hazard push yet — Phase 3.
+- Image moderation: uploaded images are served without manual review; a moderator dashboard is Phase 3.
+- Leaderboard has no time windowing (all-time); consider weekly/monthly views in Phase 3.
+
+Files changed (Phase 2):
+- New: src/lib/forecast-service.ts, src/components/{risk-gauge,forecast-panel,history-panel,leaderboard-panel}.tsx, src/app/api/{forecast,history,leaderboard}/route.ts, src/app/api/hazards/upload/route.ts, src/app/api/hazards/image/[filename]/route.ts, public/manifest.json
+- Modified: src/lib/types.ts, src/lib/api-client.ts, src/app/api/risk/route.ts, src/app/api/feed/route.ts, src/app/page.tsx, src/app/layout.tsx, src/components/{risk-dashboard,weather-card,community-feed,hazard-report-form}.tsx, src/components/ui/scroll-area.tsx

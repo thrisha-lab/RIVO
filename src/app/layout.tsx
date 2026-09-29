@@ -30,6 +30,12 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "RiderGuard" }],
   icons: { icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg" },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "RiderGuard",
+    statusBarStyle: "default",
+  },
   openGraph: {
     title: "RiderGuard — AI Weather Safety Co-pilot",
     description: "Safer rides for delivery riders with weather, hazard & route intelligence.",

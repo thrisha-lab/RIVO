@@ -2,16 +2,21 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   Bike,
   Loader2,
-  Navigation,
   X,
   RefreshCw,
   ShieldCheck,
   Sparkles,
   Route as RouteIcon,
+  Radio,
+  ShieldCheck as StopsIcon,
+  Siren,
+  History,
+  Trophy,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +32,9 @@ import HazardReportForm from "@/components/hazard-report-form";
 import CommunityFeed from "@/components/community-feed";
 import SafeStopsList from "@/components/safe-stops-list";
 import AiExplanationPanel from "@/components/ai-explanation-panel";
+import ForecastPanel from "@/components/forecast-panel";
+import HistoryPanel from "@/components/history-panel";
+import LeaderboardPanel from "@/components/leaderboard-panel";
 import { api, RISK_META } from "@/lib/api-client";
 import type {
   RiskAssessmentData,
@@ -168,7 +176,6 @@ export default function Home() {
           accuracy: pos.coords.accuracy,
         };
         setCurrentLocation(loc);
-        // push to backend session
         api.pushGps({ lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy }).catch(() => {});
       },
       (err) => {
@@ -184,7 +191,6 @@ export default function Home() {
     );
     watchId.current = id;
     setTracking(true);
-    // start a backend session
     api
       .startTracking({ destLat: destination?.lat, destLng: destination?.lng, destLabel: destination?.label })
       .catch(() => {});
@@ -257,13 +263,14 @@ export default function Home() {
   const routeGeometry = risk?.route?.geometry ?? null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-background to-muted/20">
       {/* Header */}
-      <header className="sticky top-0 z-[600] border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-3 sm:px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-emerald-500 text-white shadow-sm">
+      <header className="sticky top-0 z-[600] border-b border-border/60 bg-background/80 shadow-sm backdrop-blur-lg supports-[backdrop-filter]:bg-background/70">
+        <div className="mx-auto flex h-14 max-w-[1500px] items-center gap-3 px-3 sm:px-5">
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 via-sky-500 to-emerald-500 text-white shadow-md ring-1 ring-white/20">
               <Bike className="h-5 w-5" />
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-background" />
             </div>
             <div className="leading-tight">
               <div className="text-sm font-bold tracking-tight">RiderGuard</div>
@@ -272,11 +279,15 @@ export default function Home() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             {rider && (
-              <Badge variant="secondary" className="gap-1">
-                <ShieldCheck className="h-3 w-3" />
-                {rider.displayName}
-                <span className="ml-1 rounded bg-amber-400/20 px-1 text-[10px] font-bold text-amber-700 dark:text-amber-300">★{rider.reputation}</span>
-              </Badge>
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+                <Badge variant="secondary" className="gap-1.5 py-1 pl-2.5 pr-1">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="font-semibold">{rider.displayName}</span>
+                  <span className="flex items-center gap-0.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                    ★{rider.reputation}
+                  </span>
+                </Badge>
+              </motion.div>
             )}
             <ThemeToggle />
           </div>
@@ -284,13 +295,13 @@ export default function Home() {
       </header>
 
       {/* Main */}
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-3 py-3 sm:px-4 sm:py-4">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_420px]">
+      <main className="mx-auto w-full max-w-[1500px] flex-1 px-3 py-3 sm:px-5 sm:py-4">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_440px]">
           {/* LEFT: map + search + controls */}
           <section className="flex flex-col gap-3">
             <DestinationSearch onSelect={onDestinationSelect} recent={recentDestinations} />
 
-            <div className="relative h-[44vh] min-h-[320px] w-full lg:h-[calc(100vh-220px)] lg:max-h-[760px]">
+            <div className="relative h-[44vh] min-h-[340px] w-full lg:h-[calc(100vh-220px)] lg:max-h-[780px]">
               <RiderMap
                 center={currentLocation}
                 currentLocation={currentLocation}
@@ -312,7 +323,7 @@ export default function Home() {
                     setDestination(null);
                     setPinLocation(null);
                   }}
-                  className="absolute right-2 top-2 z-[600] inline-flex items-center gap-1 rounded-md border bg-background/90 px-2 py-1 text-xs shadow-sm backdrop-blur hover:bg-accent"
+                  className="absolute right-2 top-2 z-[600] inline-flex items-center gap-1 rounded-md border bg-background/90 px-2.5 py-1.5 text-xs font-medium shadow-sm backdrop-blur transition hover:bg-accent"
                 >
                   <X className="h-3 w-3" /> Clear destination
                 </button>
@@ -328,21 +339,30 @@ export default function Home() {
               onLocate={locateOnce}
             />
 
-            {risk?.route && (
-              <Card className="p-3">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 font-medium">
-                    <RouteIcon className="h-4 w-4 text-sky-600" /> Route summary
-                  </div>
-                  <Badge variant="outline" className="text-[10px] capitalize">{risk.route.source.replace("-", " ")}</Badge>
-                </div>
-                <div className="mt-1.5 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>📏 {risk.route.distanceKm.toFixed(1)} km</span>
-                  {risk.route.durationMin != null && <span>⏱ ~{risk.route.durationMin} min</span>}
-                  <span>🛣 {routeGeometry ? `${routeGeometry.length} pts` : "—"}</span>
-                </div>
-              </Card>
-            )}
+            <AnimatePresence>
+              {risk?.route && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <Card className="overflow-hidden p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 font-medium">
+                        <RouteIcon className="h-4 w-4 text-sky-600" /> Route summary
+                      </div>
+                      <Badge variant="outline" className="text-[10px] capitalize">{risk.route.source.replace("-", " ")}</Badge>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>📏 {risk.route.distanceKm.toFixed(1)} km</span>
+                      {risk.route.durationMin != null && <span>⏱ ~{risk.route.durationMin} min</span>}
+                      <span>🛣 {routeGeometry ? `${routeGeometry.length} pts` : "—"}</span>
+                      <span className="text-sky-600 dark:text-sky-400">ETD now</span>
+                    </div>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </section>
 
           {/* RIGHT: intelligence panels */}
@@ -353,6 +373,8 @@ export default function Home() {
               description={weatherDesc}
               loading={riskLoading}
             />
+            {/* Forecast — best departure time, only relevant once we have a location */}
+            <ForecastPanel location={currentLocation ?? destination} active={!!(currentLocation ?? destination)} />
             <AiExplanationPanel
               explanation={aiExplanation}
               loading={aiLoading}
@@ -360,10 +382,12 @@ export default function Home() {
             />
 
             <Tabs defaultValue="feed" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="feed">Feed</TabsTrigger>
-                <TabsTrigger value="stops">Safe stops</TabsTrigger>
-                <TabsTrigger value="report">Report</TabsTrigger>
+              <TabsList className="grid h-10 w-full grid-cols-5 gap-1 rounded-lg bg-muted/50 p-1">
+                <TabsTrigger value="feed" className="gap-1 text-xs"><Radio className="h-3.5 w-3.5" />Feed</TabsTrigger>
+                <TabsTrigger value="stops" className="gap-1 text-xs"><StopsIcon className="h-3.5 w-3.5" />Stops</TabsTrigger>
+                <TabsTrigger value="report" className="gap-1 text-xs"><Siren className="h-3.5 w-3.5" />Report</TabsTrigger>
+                <TabsTrigger value="history" className="gap-1 text-xs"><History className="h-3.5 w-3.5" />History</TabsTrigger>
+                <TabsTrigger value="board" className="gap-1 text-xs"><Trophy className="h-3.5 w-3.5" />Top</TabsTrigger>
               </TabsList>
               <TabsContent value="feed" className="mt-3">
                 <div className="mb-2 flex items-center justify-end">
@@ -393,22 +417,29 @@ export default function Home() {
                   onCreated={refreshFeed}
                 />
               </TabsContent>
+              <TabsContent value="history" className="mt-3">
+                <HistoryPanel />
+              </TabsContent>
+              <TabsContent value="board" className="mt-3">
+                <LeaderboardPanel riderId={rider?.id ?? null} />
+              </TabsContent>
             </Tabs>
           </aside>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto border-t bg-muted/30">
-        <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-2 px-4 py-3 text-xs text-muted-foreground sm:flex-row">
+      <footer className="mt-auto border-t border-border/60 bg-muted/30">
+        <div className="mx-auto flex max-w-[1500px] flex-col items-center justify-between gap-2 px-4 py-3 text-xs text-muted-foreground sm:flex-row">
           <div className="flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3" />
+            <Sparkles className="h-3 w-3 text-sky-500" />
             <span>Risk scores are deterministic. AI explains only — never overrides safety.</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <span>Weather: Open-Meteo</span>
-            <span>Maps: OpenStreetMap</span>
-            <span>Routing: OSRM</span>
+            <span>· Maps: OpenStreetMap</span>
+            <span>· Routing: OSRM</span>
+            <span>· AI: Z.ai</span>
           </div>
         </div>
       </footer>

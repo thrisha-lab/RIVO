@@ -1,0 +1,19 @@
+{
+  "name": "RiderGuard — AI Weather Safety Co-pilot",
+  "short_name": "RiderGuard",
+  "description": "AI weather safety co-pilot for delivery riders. Deterministic risk scoring, hazard reporting, safe stops, and community intelligence.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0ea5e9",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait-primary",
+  "categories": ["navigation", "travel", "utilities"],
+  "icons": [
+    {
+      "src": "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

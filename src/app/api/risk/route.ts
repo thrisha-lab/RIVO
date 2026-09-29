@@ -48,13 +48,6 @@ export async function GET(req: NextRequest) {
     return fail("Provide originLat/originLng and/or destLat/destLng.");
   }
 
-  // Weather at the route center (representative).
-  const weather = await getWeather(centerLat!, centerLng!);
-  if (weather && hasDest) {
-    // Enrich precip probability along the route.
-    weather.precipProbability = await getPrecipProbability(centerLat!, centerLng!);
-  }
-
   // Route geometry (if both points present).
   let route: Awaited<ReturnType<typeof getRoute>> = null;
   if (hasOrigin && hasDest) {
@@ -62,6 +55,43 @@ export async function GET(req: NextRequest) {
       { lat: originLat!, lng: originLng! },
       { lat: destLat!, lng: destLng! },
     );
+  }
+
+  // Weather sampling: sample along the route polyline and use the WORST-CASE
+  // snapshot (highest weatherRisk) so the engine never under-reports risk on
+  // routes that cross a weather boundary. Falls back to single-point weather.
+  let weather: Awaited<ReturnType<typeof getWeather>> = null;
+  const weatherSamples: NonNullable<Awaited<ReturnType<typeof getWeather>>>[] = [];
+  if (route && route.geometry.length > 1) {
+    const geom = route.geometry;
+    const sampleIdx = pickSampleIndices(geom.length, 3);
+    const samples = await Promise.all(
+      sampleIdx.map((i) => getWeather(geom[i].lat, geom[i].lng)),
+    );
+    for (const s of samples) {
+      if (s) weatherSamples.push(s);
+    }
+    if (weatherSamples.length > 0) {
+      // Worst-case weather (max weatherRisk). Importing weatherRisk here would
+      // create a cycle; instead approximate by max precip + max gust.
+      weather = weatherSamples.reduce((worst, s) => {
+        const sScore = s.precipMm * 5 + (s.windGustKph ?? 0) + (10000 - s.visibilityM) / 500;
+        const wScore = worst.precipMm * 5 + (worst.windGustKph ?? 0) + (10000 - worst.visibilityM) / 500;
+        return sScore > wScore ? s : worst;
+      });
+      // Average precip probability across samples.
+      weather.precipProbability =
+        weatherSamples.reduce((sum, s) => sum + s.precipProbability, 0) /
+        weatherSamples.length;
+    }
+  } else {
+    weather = await getWeather(centerLat!, centerLng!);
+    if (weather) weatherSamples.push(weather);
+  }
+  if (weather && hasDest) {
+    // Enrich precip probability along the route center as a fallback signal.
+    const prob = await getPrecipProbability(centerLat!, centerLng!);
+    weather.precipProbability = Math.max(weather.precipProbability, prob);
   }
 
   // Hazard density: count active hazards within ~500m of route geometry.
@@ -152,4 +182,16 @@ export async function GET(req: NextRequest) {
       ? { id: rider.id, displayName: rider.displayName, reputation: rider.reputation }
       : null,
   });
+}
+
+/** Pick `n` evenly-spaced indices across an array of `len`, always including
+ *  the first and last when len >= n. */
+function pickSampleIndices(len: number, n: number): number[] {
+  if (len <= 0) return [];
+  if (len <= n) return Array.from({ length: len }, (_, i) => i);
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(Math.round((i * (len - 1)) / (n - 1)));
+  }
+  return out;
 }

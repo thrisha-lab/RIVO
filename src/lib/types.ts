@@ -77,6 +77,7 @@ export interface FeedItem {
   type?: string;
   severity?: string;
   description?: string | null;
+  imageUrl?: string | null;
   confirmCount?: number;
   disputeCount?: number;
   status?: string;
@@ -109,4 +110,72 @@ export interface RiderIdentity {
   displayName: string;
   reputation: number;
   isNew: boolean;
+}
+
+// ---- Phase 2: Forecast ----
+export interface ForecastHour {
+  time: string;
+  hour: number;
+  tempC: number;
+  apparentTempC: number;
+  windSpeedKph: number;
+  windGustKph: number;
+  precipMm: number;
+  precipProbability: number;
+  humidity: number;
+  visibilityM: number;
+  weatherCode: number;
+  isDay: boolean;
+  riskScore: number;
+}
+
+export interface DepartureWindow {
+  hour: number;
+  iso: string;
+  riskScore: number;
+  label: string;
+  summary: string;
+}
+
+export interface ForecastData {
+  forecast: ForecastHour[];
+  recommendation: {
+    best: DepartureWindow | null;
+    worst: DepartureWindow | null;
+    windows: DepartureWindow[];
+  };
+}
+
+// ---- Phase 2: Trip history ----
+export interface HistoryRecord {
+  id: string;
+  score: number;
+  level: RiskLevel;
+  factors: RiskFactor[];
+  originLat: number | null;
+  originLng: number | null;
+  destLat: number | null;
+  destLng: number | null;
+  weatherSummary: string | null;
+  createdAt: string;
+}
+
+export interface HistoryStats {
+  totalTrips: number;
+  avgScore: number;
+  worstScore: number;
+  bestScore: number;
+  levelCounts: Record<string, number>;
+}
+
+// ---- Phase 2: Leaderboard ----
+export interface LeaderboardEntry {
+  rank: number;
+  id: string;
+  displayName: string;
+  reputation: number;
+  reportsCount: number;
+  votesCount: number;
+  lastSeenAt: string;
+  isYou?: boolean;
 }

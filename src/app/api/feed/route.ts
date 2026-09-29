@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
       lat: true,
       lng: true,
       description: true,
+      imageUrl: true,
       confirmCount: true,
       disputeCount: true,
       status: true,
