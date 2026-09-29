@@ -26,6 +26,8 @@ export default function GpsControls({ tracking, currentLocation, permission, add
             <Badge className="bg-emerald-500 text-white">● Tracking</Badge>
           ) : permission === "denied" ? (
             <Badge variant="destructive">Blocked</Badge>
+          ) : currentLocation ? (
+            <Badge variant="outline" className="border-sky-400 text-sky-600 dark:text-sky-400">◉ Located</Badge>
           ) : (
             <Badge variant="outline">Off</Badge>
           )}

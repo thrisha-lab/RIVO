@@ -11,14 +11,16 @@ interface Shortcut {
 }
 
 const SHORTCUTS: Shortcut[] = [
+  { keys: "m", description: "Toggle Ride Mode (fullscreen)" },
+  { keys: "?", description: "Toggle this shortcuts panel" },
+  { keys: "Esc", description: "Close any open modal / exit ride mode" },
   { keys: "g then s", description: "Open Settings" },
   { keys: "g then f", description: "Focus destination search" },
   { keys: "g then r", description: "Go to Report tab" },
   { keys: "g then h", description: "Go to Trip History" },
   { keys: "g then b", description: "Go to Badges" },
   { keys: "g then t", description: "Go to Top riders" },
-  { keys: "?", description: "Toggle this shortcuts panel" },
-  { keys: "Esc", description: "Close any open modal" },
+  { keys: "shake", description: "Shake phone to open SOS (mobile)" },
 ];
 
 export default function KeyboardShortcutsOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {

@@ -54,7 +54,9 @@ import VoiceAlertsToggle from "@/components/voice-alerts-toggle";
 import KeyboardShortcutsOverlay from "@/components/keyboard-shortcuts-overlay";
 import RouteComparison from "@/components/route-comparison";
 import ShareTripSummary from "@/components/share-trip-summary";
+import RideMode from "@/components/ride-mode";
 import { useRealtime } from "@/hooks/use-realtime";
+import { useShakeToSos, requestMotionPermission } from "@/hooks/use-shake-to-sos";
 import { api, RISK_META } from "@/lib/api-client";
 import type {
   RiskAssessmentData,
@@ -121,8 +123,12 @@ export default function Home() {
   const [showShortcuts, setShowShortcuts] = React.useState(false);
   const [voiceEnabled, setVoiceEnabled] = React.useState(false);
   const [showShare, setShowShare] = React.useState(false);
+  const [showRideMode, setShowRideMode] = React.useState(false);
   // Override route geometry when the user selects an alternative route.
   const [overrideGeometry, setOverrideGeometry] = React.useState<{ lat: number; lng: number }[] | null>(null);
+  // Trip timer for ride mode.
+  const [tripStart, setTripStart] = React.useState<number | null>(null);
+  const [tripElapsed, setTripElapsed] = React.useState(0);
 
   // Real-time presence + hazard/SOS push via WebSocket mini-service (port 3003).
   const realtime = useRealtime({
@@ -163,6 +169,12 @@ export default function Home() {
         setShowSettings(false);
         setShowShortcuts(false);
         setSelectedHazardId(null);
+        setShowRideMode(false);
+        return;
+      }
+      // "m" toggles ride mode
+      if (e.key === "m" && !e.metaKey && !e.ctrlKey) {
+        setShowRideMode((v) => !v);
         return;
       }
 
@@ -191,6 +203,29 @@ export default function Home() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // Trip timer: tick every second while ride mode is active.
+  React.useEffect(() => {
+    if (!showRideMode) {
+      setTripStart(null);
+      setTripElapsed(0);
+      return;
+    }
+    if (tripStart === null) setTripStart(Date.now());
+    const t = setInterval(() => {
+      setTripElapsed(Math.floor((Date.now() - (tripStart ?? Date.now())) / 1000));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [showRideMode, tripStart]);
+
+  // Shake-to-SOS: opens the SOS modal when the phone is shaken.
+  const handleShake = React.useCallback(() => {
+    // Open the SOS button's modal by simulating a click.
+    const sosBtn = document.querySelector('button[aria-label="Emergency SOS"]') as HTMLButtonElement | null;
+    sosBtn?.click();
+    toast("📱 Shake detected — SOS opened", { icon: "🚨" });
+  }, []);
+  useShakeToSos(handleShake, true);
 
   // Load nearby intel whenever current location changes.
   const loadNearby = React.useCallback(async (loc: Loc) => {
@@ -497,6 +532,14 @@ export default function Home() {
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
+                          onClick={() => setShowRideMode(true)}
+                          className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-emerald-600 to-sky-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:brightness-110"
+                          aria-label="Start ride mode"
+                        >
+                          <Bike className="h-3 w-3" /> Ride
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setShowShare(true)}
                           className="inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-[11px] font-medium transition hover:bg-accent"
                           aria-label="Share trip summary"
@@ -690,6 +733,18 @@ export default function Home() {
         destinationLabel={destination?.label}
         open={showShare}
         onClose={() => setShowShare(false)}
+      />
+
+      {/* Active Ride Mode — fullscreen simplified UI for riding */}
+      <RideMode
+        open={showRideMode}
+        onClose={() => setShowRideMode(false)}
+        risk={risk}
+        destination={destination}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={setVoiceEnabled}
+        tripElapsedSec={tripElapsed}
+        aiExplanation={aiExplanation}
       />
     </div>
   );
