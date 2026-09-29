@@ -20,6 +20,7 @@ import {
   BarChart3,
   Award,
   Settings as SettingsIcon,
+  Keyboard,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,9 @@ import StatsDashboard from "@/components/stats-dashboard";
 import AchievementsPanel from "@/components/achievements-panel";
 import HazardDetailModal from "@/components/hazard-detail-modal";
 import SettingsPanel from "@/components/settings-panel";
+import DeliveryImpactCard from "@/components/delivery-impact-card";
+import VoiceAlertsToggle from "@/components/voice-alerts-toggle";
+import KeyboardShortcutsOverlay from "@/components/keyboard-shortcuts-overlay";
 import { useRealtime } from "@/hooks/use-realtime";
 import { api, RISK_META } from "@/lib/api-client";
 import type {
@@ -105,6 +109,8 @@ export default function Home() {
   const [onboardingDismissed, setOnboardingDismissed] = React.useState(false);
   const [selectedHazardId, setSelectedHazardId] = React.useState<string | null>(null);
   const [showSettings, setShowSettings] = React.useState(false);
+  const [showShortcuts, setShowShortcuts] = React.useState(false);
+  const [voiceEnabled, setVoiceEnabled] = React.useState(false);
 
   // Real-time presence + hazard/SOS push via WebSocket mini-service (port 3003).
   const realtime = useRealtime({
@@ -127,22 +133,46 @@ export default function Home() {
       });
   }, []);
 
-  // Keyboard shortcut: press "?" to open map legend hint, "S" + Shift for SOS.
-  // (Actual SOS activation still requires the modal button to prevent accidents.)
+  // Keyboard shortcuts (vim-style "g then X" + "?" for help overlay).
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input/textarea.
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      // "g" then "s" opens settings (vim-style)
+      const typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (typing) return;
+
+      // "?" opens shortcuts overlay
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
+      }
+      // Escape closes overlays
+      if (e.key === "Escape") {
+        setShowSettings(false);
+        setShowShortcuts(false);
+        setSelectedHazardId(null);
+        return;
+      }
+
+      // "g" prefix → wait for next key
       if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
         const handler = (e2: KeyboardEvent) => {
-          if (e2.key === "s") {
-            setShowSettings(true);
-            window.removeEventListener("keydown", handler);
+          const tab = (val: string) => {
+            const el = document.querySelector(`[role=tab][value=${val}]`) as HTMLElement | null;
+            el?.scrollIntoView({ block: "center" });
+            el?.click();
+          };
+          switch (e2.key) {
+            case "s": setShowSettings(true); break;
+            case "f": (document.querySelector('input[placeholder*="destination"]') as HTMLElement)?.focus(); break;
+            case "r": tab("report"); break;
+            case "h": tab("history"); break;
+            case "b": tab("badges"); break;
+            case "t": tab("board"); break;
           }
+          window.removeEventListener("keydown", handler);
         };
-        window.addEventListener("keydown", handler, { once: true });
+        window.addEventListener("keydown", handler);
         setTimeout(() => window.removeEventListener("keydown", handler), 1200);
       }
     };
@@ -347,6 +377,14 @@ export default function Home() {
               />
             )}
             <AlertBell />
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(true)}
+              aria-label="Keyboard shortcuts"
+              className="hidden h-9 w-9 items-center justify-center rounded-md border bg-background text-foreground transition hover:bg-accent sm:inline-flex"
+            >
+              <Keyboard className="h-4 w-4" />
+            </button>
             <ThemeToggle />
           </div>
         </div>
@@ -436,7 +474,14 @@ export default function Home() {
 
           {/* RIGHT: intelligence panels */}
           <aside className="flex flex-col gap-3">
-            <RiskDashboard risk={risk} loading={riskLoading} onExplain={explain} explaining={aiLoading} />
+            <div className="flex items-center justify-between gap-2">
+              <RiskDashboard risk={risk} loading={riskLoading} onExplain={explain} explaining={aiLoading} />
+            </div>
+            {/* Delivery impact + voice alerts row */}
+            <div className="flex items-center justify-between gap-2">
+              <DeliveryImpactCard impact={risk?.impact ?? null} />
+              <VoiceAlertsToggle risk={risk} enabled={voiceEnabled} onToggle={setVoiceEnabled} />
+            </div>
             <WeatherCard
               weather={risk?.weather ?? null}
               description={weatherDesc}
@@ -582,6 +627,9 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Keyboard shortcuts overlay */}
+      <KeyboardShortcutsOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
 }

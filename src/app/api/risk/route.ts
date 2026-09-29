@@ -4,6 +4,7 @@ import { resolveRider } from "@/lib/auth";
 import { getWeather, getPrecipProbability } from "@/lib/weather-service";
 import { getRoute } from "@/lib/routing-service";
 import { assessRisk, SEVERITY_ORDER } from "@/lib/risk-engine";
+import { estimateDeliveryImpact } from "@/lib/delivery-impact";
 import { haversineKm } from "@/lib/geo";
 import { ok, fail, unauthorized, rateLimited } from "@/lib/api";
 import { rateLimit, getClientIp, clampLat, clampLng } from "@/lib/security";
@@ -153,11 +154,19 @@ export async function GET(req: NextRequest) {
 
   const distanceKm = route ? route.distanceKm : hasOrigin && hasDest ? haversineKm({ lat: originLat!, lng: originLng! }, { lat: destLat!, lng: destLng! }) : null;
 
+  // Delivery impact estimate (extra time due to conditions).
+  const impact = estimateDeliveryImpact(
+    risk,
+    weather,
+    route ? { distanceKm: route.distanceKm, durationMin: route.durationMin } : (distanceKm !== null ? { distanceKm, durationMin: Math.max(1, Math.round(distanceKm / 25 * 60)) } : null),
+  );
+
   return ok({
     score: risk.score,
     level: risk.level,
     factors: risk.factors,
     recommendation: risk.recommendation,
+    impact,
     weather: weather
       ? {
           tempC: weather.tempC,

@@ -28,6 +28,7 @@ export interface RiskAssessmentData {
   level: RiskLevel;
   factors: RiskFactor[];
   recommendation: string;
+  impact?: DeliveryImpact | null;
   weather: WeatherInfo | null;
   route: {
     distanceKm: number;
@@ -297,4 +298,15 @@ export interface RiderSettings {
   reputation: number;
   createdAt: string;
   lastSeenAt: string;
+}
+
+// ---- Phase 5: Delivery impact ----
+export interface DeliveryImpact {
+  baseDurationMin: number;
+  adjustedDurationMin: number;
+  extraMinutes: number;
+  slowDownPct: number;
+  reason: string;
+  worthIt: "yes" | "caution" | "no";
+  worthItReason: string;
 }

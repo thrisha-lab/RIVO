@@ -311,3 +311,68 @@ Known Limitations / Remaining:
 Files changed (Phase 4):
 - New: src/lib/achievements.ts, src/components/{stats-dashboard,achievements-panel,hazard-detail-modal,settings-panel}.tsx, src/app/api/{stats,achievements,settings}/route.ts, src/app/api/hazards/[id]/route.ts
 - Modified: prisma/schema.prisma, src/lib/{db,types,api-client}.ts, src/app/page.tsx, src/components/{rider-map,weather-card,community-feed}.tsx
+
+---
+Task ID: 5
+Agent: Z.ai Code (cron webDevReview — Phase 5)
+Task: Assess project status via agent-browser QA, add automated test suite, delivery impact estimator, voice alerts, and keyboard shortcuts.
+
+Work Log:
+- Reviewed Phase 1-4 worklog. Project was stable: lint clean, tsc clean, all routes 200, 67 tests passing from this phase.
+- Verified realtime service was running on port 3003 (PID 11006).
+- agent-browser QA: app stable, no errors. VLM suggested 3 high-value features: route alternatives, voice alerts, and delivery impact estimator.
+
+Automated test suite (Phase 5 priority — was the main remaining gap):
+- `tests/unit/risk-engine.test.ts`: 25 tests covering weatherRisk (rain/wind/visibility/temp extremes), timeOfDayRisk (late night/dawn/dusk/midday), hazardRisk (scaling/caps), routeRisk (distance/duration/caps), assessRisk integration (clear→low, storm→severe, deterministic, factor sorting, weather-null handling), and constants (SEVERITY_ORDER, HAZARD_TYPES).
+- `tests/unit/geo.test.ts`: 22 tests covering toRad, haversineKm (symmetry, Bengaluru distances), haversineM, bboxAround (contains center, radius scaling, equator symmetry), bearingDeg (east/north), samplePolyline (empty/single/sample-count/endpoint-fidelity), formatDistance.
+- `tests/unit/security.test.ts`: 20 tests covering rateLimit (first-request, token exhaustion, IP independence), getClientIp (forwarded-for/real-ip/unknown), sanitizeText (control chars, trim, truncate, non-string), clampLat/clampLng (valid, out-of-range, string parsing, boundaries).
+- Added `test` + `test:unit` scripts to package.json. Added `bun-types` to tsconfig `types` so tsc recognizes `bun:test`.
+- **All 67 tests pass** in 41ms.
+
+Delivery impact estimator (new feature):
+- `src/lib/delivery-impact.ts`: Estimates extra time a rider should budget based on deterministic risk + weather. Slowdown factors: heavy/moderate/light rain (+30/20/12%), strong/moderate gusts (+15/8%), poor/reduced visibility (+15/7%), night (+5%), many hazards (+8%). Capped at 60%. Returns adjusted duration, extra minutes, slowdown %, human reason, and "worth it" guidance (yes/caution/no) with explanation.
+- Integrated into `/api/risk` response as `impact` field.
+- `src/components/delivery-impact-card.tsx`: Animated card showing estimated time vs baseline (with strikethrough), slowdown %, reason breakdown, and color-coded worth-it badge (green/amber/red) with explanation.
+
+Voice alerts mode (new feature — hands-free safety for riders in motion):
+- `src/components/voice-alerts-toggle.tsx`: Uses browser Web Speech API (SpeechSynthesis, no external dependency). Toggle button with pulse animation when active. Speaks risk-level changes, severe hazards, heavy rain, strong gusts, and delivery impact (10+ min extra). Deduplicates announcements by signature key so it doesn't repeat. The AI only narrates the already-computed deterministic risk — never computes/overrides it.
+- Integrated into the right column next to the Delivery Impact card.
+
+Keyboard shortcuts system (new feature):
+- Expanded the "g then X" vim-style shortcut handler: g→s (settings), g→f (focus search), g→r (report), g→h (history), g→b (badges), g→t (top riders).
+- Added "?" key to toggle the shortcuts overlay, "Esc" to close all overlays.
+- `src/components/keyboard-shortcuts-overlay.tsx`: Modal listing all 8 shortcuts with kbd-styled keys and a usage tip. Accessible via header keyboard icon button or "?" key.
+
+Styling improvements:
+- Map tile style now persists to localStorage (`rg-tile-style` key) — survives page reloads. Updated `src/components/rider-map.tsx` with lazy initializer reading localStorage + `handleTileChange` that writes back.
+- Header now has a keyboard shortcuts icon button (desktop).
+- Delivery impact card uses gradient backgrounds per worth-it state (emerald/amber/red).
+- Voice toggle has gradient sky→emerald when active.
+
+Verification (agent-browser E2E of Phase 5):
+- `bun run lint` → clean. `bunx tsc --noEmit` → 0 errors (including test files after bun-types config). `bun test tests/unit/` → 67 pass, 0 fail.
+- Dev server: all routes 200, no runtime errors.
+- agent-browser verified:
+  1. Keyboard shortcuts overlay: opened via header button → shows all 8 shortcuts (g then s/f/r/h/b/t, ?, Esc) with tip "The g prefix waits for the next key within 1.2 seconds."
+  2. Delivery impact: searched "MG Road" → selected → risk computed → "Delivery Impact" card shows ESTIMATED TIME 9 min, "9 min baseline" (strikethrough), SLOWDOWN +5%, "Worth it" badge.
+  3. Voice alerts: clicked toggle → button changed to "Disable voice alerts" + toast "Voice alerts enabled — RiderGuard will speak risk changes hands-free."
+  4. Keyboard shortcuts button visible in header.
+  5. All existing features still work (Find me, destination search, risk gauge, weather, tabs).
+- VLM final review: 8/10 — recognized Delivery Impact Card (estimated time, baseline, slowdown %, worth-it assessment, voice toggle) and all other features.
+
+Stage Summary:
+- Phase 5 closed the biggest remaining gap: an automated test suite (67 unit tests covering the deterministic risk engine, geo helpers, and security — the safety-critical core).
+- Added 3 rider-facing features: delivery impact estimator (extra time + worth-it guidance), voice alerts (hands-free TTS announcements), and a full keyboard shortcuts system with overlay.
+- Persisted map tile preference to localStorage.
+- All features verified end-to-end via agent-browser with zero errors.
+
+Known Limitations / Remaining:
+- Realtime presence still in-memory (swap for Redis in multi-instance).
+- SOS still relies on in-app + tel: (no Twilio/email dispatch).
+- Test suite is unit-only; no API integration or Playwright E2E tests yet — Phase 6.
+- Voice alerts use browser TTS (quality varies by OS/browser); could integrate a premium TTS provider.
+- Route alternatives (fastest vs safest) not yet implemented — Phase 6 (requires alternative routing API).
+
+Files changed (Phase 5):
+- New: tests/unit/{risk-engine,geo,security}.test.ts, src/lib/delivery-impact.ts, src/components/{delivery-impact-card,voice-alerts-toggle,keyboard-shortcuts-overlay}.tsx
+- Modified: package.json (test scripts), tsconfig.json (bun-types), src/lib/types.ts (DeliveryImpact), src/app/api/risk/route.ts (impact field), src/app/page.tsx (integration), src/components/rider-map.tsx (localStorage tile persistence)

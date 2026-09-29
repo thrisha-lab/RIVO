@@ -108,7 +108,18 @@ export default function RiderMap(props: RiderMapProps) {
   } = props;
   const [showLegend, setShowLegend] = useState(false);
   const { resolvedTheme } = useTheme();
-  const [tileStyle, setTileStyle] = useState<"street" | "dark" | "satellite">("street");
+  // Persist tile style preference across reloads (Phase 5).
+  const [tileStyle, setTileStyle] = useState<"street" | "dark" | "satellite">(() => {
+    if (typeof window === "undefined") return "street";
+    const saved = window.localStorage.getItem("rg-tile-style");
+    if (saved === "street" || saved === "dark" || saved === "satellite") return saved;
+    return "street";
+  });
+
+  const handleTileChange = (s: "street" | "dark" | "satellite") => {
+    setTileStyle(s);
+    try { window.localStorage.setItem("rg-tile-style", s); } catch { /* ignore */ }
+  };
 
   // Sync tile style with theme by default (user can override via the map control).
   const isDark = resolvedTheme === "dark";
@@ -267,7 +278,7 @@ export default function RiderMap(props: RiderMapProps) {
               <button
                 key={s}
                 type="button"
-                onClick={() => setTileStyle(s)}
+                onClick={() => handleTileChange(s)}
                 aria-label={`Switch to ${labels[s]} tiles`}
                 aria-pressed={active}
                 className={`rounded px-1.5 py-1 text-[10px] font-medium transition ${
