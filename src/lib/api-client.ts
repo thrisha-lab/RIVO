@@ -67,6 +67,9 @@ export const api = {
       `/api/weather?lat=${lat}&lng=${lng}`,
     ),
 
+  reverseGeocode: (lat: number, lng: number) =>
+    req<{ address: string | null }>(`/api/geocode/reverse?lat=${lat}&lng=${lng}`),
+
   route: (origin: { lat: number; lng: number }, dest: { lat: number; lng: number }) =>
     req<{
       distanceKm: number;

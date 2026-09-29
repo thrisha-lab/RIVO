@@ -4,18 +4,19 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LocateFixed, Square, Crosshair, Satellite, AlertTriangle } from "lucide-react";
+import { LocateFixed, Square, Crosshair, Satellite, AlertTriangle, MapPin } from "lucide-react";
 
 interface Props {
   tracking: boolean;
   currentLocation: { lat: number; lng: number; accuracy?: number } | null;
   permission: "idle" | "granted" | "denied" | "unavailable";
+  address?: string | null;
   onStart: () => void;
   onStop: () => void;
   onLocate: () => void;
 }
 
-export default function GpsControls({ tracking, currentLocation, permission, onStart, onStop, onLocate }: Props) {
+export default function GpsControls({ tracking, currentLocation, permission, address, onStart, onStop, onLocate }: Props) {
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -54,6 +55,12 @@ export default function GpsControls({ tracking, currentLocation, permission, onS
                 <span className="text-muted-foreground">±{Math.round(currentLocation.accuracy)} m</span>
               )}
             </div>
+            {address ? (
+              <div className="mt-0.5 flex items-start gap-1 font-medium text-foreground">
+                <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-sky-500" />
+                <span className="line-clamp-2">{address}</span>
+              </div>
+            ) : null}
             <div className="mt-0.5 tabular-nums text-muted-foreground">
               {currentLocation.lat.toFixed(5)}, {currentLocation.lng.toFixed(5)}
             </div>

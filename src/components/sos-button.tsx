@@ -150,7 +150,7 @@ export default function SosButton({ location, onSosTrigger, onSosCancel }: Props
         aria-label="Emergency SOS"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="fixed bottom-5 right-5 z-[700] flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-xl ring-4 ring-red-600/30 transition hover:bg-red-700"
+        className="fixed bottom-5 right-5 z-[950] flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-xl ring-4 ring-red-600/30 transition hover:bg-red-700"
       >
         {active ? (
           <span className="absolute inset-0 animate-ping rounded-full bg-red-500 opacity-60" />

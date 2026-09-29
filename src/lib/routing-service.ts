@@ -73,6 +73,43 @@ function fallbackRoute(origin: RoutePoint, dest: RoutePoint): RouteResult {
   };
 }
 
+/**
+ * Fetch up to `max` alternative routes between two points.
+ * Uses OSRM's `alternatives=true` parameter. Falls back to a single route.
+ */
+export async function getRouteAlternatives(
+  origin: RoutePoint,
+  dest: RoutePoint,
+  max = 3,
+): Promise<RouteResult[]> {
+  const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${dest.lng},${dest.lat}?overview=full&geometries=geojson&alternatives=true&steps=false`;
+  try {
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    if (!res.ok) return [await getRoute(origin, dest)].filter(Boolean) as RouteResult[];
+    const data = (await res.json()) as {
+      routes: Array<{
+        distance: number;
+        duration: number;
+        geometry: { coordinates: [number, number][] };
+      }>;
+    };
+    const routes: RouteResult[] = (data.routes ?? []).slice(0, max).map((r) => ({
+      distanceKm: r.distance / 1000,
+      durationMin: Math.round(r.duration / 60),
+      geometry: r.geometry.coordinates.map(([lng, lat]) => ({ lat, lng })),
+      source: "osrm-alt",
+    }));
+    if (routes.length === 0) {
+      const fb = await getRoute(origin, dest);
+      return fb ? [fb] : [];
+    }
+    return routes;
+  } catch {
+    const fb = await getRoute(origin, dest);
+    return fb ? [fb] : [];
+  }
+}
+
 function haversineKmLocal(a: RoutePoint, b: RoutePoint): number {
   const R = 6371;
   const dLat = (toRadLocal(b.lat - a.lat));

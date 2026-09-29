@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getHourlyForecast, recommendBestDeparture } from "@/lib/forecast-service";
+import { evaluateWeatherAlerts, createWeatherAlertsForNearbyRiders } from "@/lib/weather-alerts";
 import { ok, fail, rateLimited } from "@/lib/api";
 import { rateLimit, getClientIp, clampLat, clampLng } from "@/lib/security";
 
@@ -21,5 +22,12 @@ export async function GET(req: NextRequest) {
   if (forecast.length === 0) return fail("Forecast unavailable.", 503);
 
   const recommendation = recommendBestDeparture(forecast);
-  return ok({ forecast, recommendation });
+
+  // Evaluate weather alert rules + create alerts for nearby riders (best-effort).
+  const weatherAlerts = evaluateWeatherAlerts(forecast);
+  if (weatherAlerts.length > 0) {
+    createWeatherAlertsForNearbyRiders(lat, lng, weatherAlerts).catch(() => { /* fire-and-forget */ });
+  }
+
+  return ok({ forecast, recommendation, weatherAlerts });
 }

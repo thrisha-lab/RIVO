@@ -181,8 +181,12 @@ export default function RiderMap(props: RiderMapProps) {
 
         {routeGeometry && routeGeometry.length > 1 && (
           <>
-            <Polyline positions={routeGeometry.map((p) => [p.lat, p.lng] as [number, number])} pathOptions={{ color: "#0ea5e9", weight: 5, opacity: 0.85 }} />
-            <Polyline positions={routeGeometry.map((p) => [p.lat, p.lng] as [number, number])} pathOptions={{ color: "#fff", weight: 9, opacity: 0.4 }} />
+            {/* White casing for contrast */}
+            <Polyline positions={routeGeometry.map((p) => [p.lat, p.lng] as [number, number])} pathOptions={{ color: "#ffffff", weight: 10, opacity: 0.5, lineCap: "round" }} />
+            {/* Main route line */}
+            <Polyline positions={routeGeometry.map((p) => [p.lat, p.lng] as [number, number])} pathOptions={{ color: "#0ea5e9", weight: 5, opacity: 0.9, lineCap: "round" }} />
+            {/* Direction arrows overlay */}
+            <Polyline positions={routeGeometry.map((p) => [p.lat, p.lng] as [number, number])} pathOptions={{ color: "#ffffff", weight: 1, opacity: 0.6, dashArray: "1 12", lineCap: "round" }} />
           </>
         )}
 

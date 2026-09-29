@@ -21,6 +21,7 @@ import {
   Award,
   Settings as SettingsIcon,
   Keyboard,
+  Share2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,8 @@ import SettingsPanel from "@/components/settings-panel";
 import DeliveryImpactCard from "@/components/delivery-impact-card";
 import VoiceAlertsToggle from "@/components/voice-alerts-toggle";
 import KeyboardShortcutsOverlay from "@/components/keyboard-shortcuts-overlay";
+import RouteComparison from "@/components/route-comparison";
+import ShareTripSummary from "@/components/share-trip-summary";
 import { useRealtime } from "@/hooks/use-realtime";
 import { api, RISK_META } from "@/lib/api-client";
 import type {
@@ -93,6 +96,12 @@ export default function Home() {
   const [risk, setRisk] = React.useState<RiskAssessmentData | null>(null);
   const [riskLoading, setRiskLoading] = React.useState(false);
   const [weatherDesc, setWeatherDesc] = React.useState<string | undefined>();
+  // Standalone weather that loads immediately on GPS, before a destination is set.
+  const [standaloneWeather, setStandaloneWeather] = React.useState<import("@/lib/types").WeatherInfo | null>(null);
+  const [standaloneWeatherDesc, setStandaloneWeatherDesc] = React.useState<string | undefined>();
+  const [standaloneWeatherLoading, setStandaloneWeatherLoading] = React.useState(false);
+  // Reverse-geocoded readable address for the current position.
+  const [currentAddress, setCurrentAddress] = React.useState<string | null>(null);
 
   const [hazards, setHazards] = React.useState<HazardItem[]>([]);
   const [safeStops, setSafeStops] = React.useState<SafeStopItem[]>([]);
@@ -111,6 +120,9 @@ export default function Home() {
   const [showSettings, setShowSettings] = React.useState(false);
   const [showShortcuts, setShowShortcuts] = React.useState(false);
   const [voiceEnabled, setVoiceEnabled] = React.useState(false);
+  const [showShare, setShowShare] = React.useState(false);
+  // Override route geometry when the user selects an alternative route.
+  const [overrideGeometry, setOverrideGeometry] = React.useState<{ lat: number; lng: number }[] | null>(null);
 
   // Real-time presence + hazard/SOS push via WebSocket mini-service (port 3003).
   const realtime = useRealtime({
@@ -235,6 +247,29 @@ export default function Home() {
     if (currentLocation) loadNearby(currentLocation);
   }, [currentLocation, loadNearby]);
 
+  // Fetch standalone weather immediately on GPS (don't wait for destination).
+  // Also reverse-geocode the current position to a readable address.
+  React.useEffect(() => {
+    if (!currentLocation) return;
+    // Skip if risk already provides weather (destination set).
+    if (risk?.weather) return;
+    setStandaloneWeatherLoading(true);
+    api
+      .weather(currentLocation.lat, currentLocation.lng)
+      .then((r) => {
+        setStandaloneWeather(r.weather);
+        setStandaloneWeatherDesc(r.description);
+      })
+      .catch(() => { /* ignore */ })
+      .finally(() => setStandaloneWeatherLoading(false));
+
+    // Reverse geocode for readable address (fire-and-forget, cached server-side).
+    api
+      .reverseGeocode(currentLocation.lat, currentLocation.lng)
+      .then((r) => setCurrentAddress(r.address))
+      .catch(() => setCurrentAddress(null));
+  }, [currentLocation, risk?.weather]);
+
   // ----- GPS handling -----
   const startTracking = React.useCallback(() => {
     if (!("geolocation" in navigator)) {
@@ -339,7 +374,7 @@ export default function Home() {
     }
   }, [risk, destination]);
 
-  const routeGeometry = risk?.route?.geometry ?? null;
+  const routeGeometry = overrideGeometry ?? risk?.route?.geometry ?? null;
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-background to-muted/20">
@@ -441,6 +476,7 @@ export default function Home() {
               tracking={tracking}
               currentLocation={currentLocation}
               permission={permission}
+              address={currentAddress}
               onStart={startTracking}
               onStop={stopTracking}
               onLocate={locateOnce}
@@ -458,7 +494,17 @@ export default function Home() {
                       <div className="flex items-center gap-2 font-medium">
                         <RouteIcon className="h-4 w-4 text-sky-600" /> Route summary
                       </div>
-                      <Badge variant="outline" className="text-[10px] capitalize">{risk.route.source.replace("-", " ")}</Badge>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowShare(true)}
+                          className="inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-[11px] font-medium transition hover:bg-accent"
+                          aria-label="Share trip summary"
+                        >
+                          <Share2 className="h-3 w-3" /> Share
+                        </button>
+                        <Badge variant="outline" className="text-[10px] capitalize">{risk.route.source.replace("-", " ")}</Badge>
+                      </div>
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span>📏 {risk.route.distanceKm.toFixed(1)} km</span>
@@ -470,10 +516,17 @@ export default function Home() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Route comparison (alternative routes: fastest / shortest / safest) */}
+            <RouteComparison
+              origin={currentLocation}
+              destination={destination}
+              onSelectRoute={(geom) => setOverrideGeometry(geom)}
+            />
           </section>
 
           {/* RIGHT: intelligence panels */}
-          <aside className="flex flex-col gap-3">
+          <aside className="flex flex-col gap-3 pb-20 lg:pb-0">
             <div className="flex items-center justify-between gap-2">
               <RiskDashboard risk={risk} loading={riskLoading} onExplain={explain} explaining={aiLoading} />
             </div>
@@ -483,9 +536,9 @@ export default function Home() {
               <VoiceAlertsToggle risk={risk} enabled={voiceEnabled} onToggle={setVoiceEnabled} />
             </div>
             <WeatherCard
-              weather={risk?.weather ?? null}
-              description={weatherDesc}
-              loading={riskLoading}
+              weather={risk?.weather ?? standaloneWeather}
+              description={weatherDesc ?? standaloneWeatherDesc}
+              loading={riskLoading || standaloneWeatherLoading}
             />
             {/* Forecast — best departure time, only relevant once we have a location */}
             <ForecastPanel location={currentLocation ?? destination} active={!!(currentLocation ?? destination)} />
@@ -630,6 +683,14 @@ export default function Home() {
 
       {/* Keyboard shortcuts overlay */}
       <KeyboardShortcutsOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+
+      {/* Share trip summary modal */}
+      <ShareTripSummary
+        risk={risk}
+        destinationLabel={destination?.label}
+        open={showShare}
+        onClose={() => setShowShare(false)}
+      />
     </div>
   );
 }
