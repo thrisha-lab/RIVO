@@ -17,6 +17,9 @@ import {
   Siren,
   History,
   Trophy,
+  BarChart3,
+  Award,
+  Settings as SettingsIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +43,10 @@ import FavoritesBar from "@/components/favorites-bar";
 import AlertBell from "@/components/alert-bell";
 import OnboardingModal from "@/components/onboarding-modal";
 import RealtimeToasts from "@/components/realtime-toasts";
+import StatsDashboard from "@/components/stats-dashboard";
+import AchievementsPanel from "@/components/achievements-panel";
+import HazardDetailModal from "@/components/hazard-detail-modal";
+import SettingsPanel from "@/components/settings-panel";
 import { useRealtime } from "@/hooks/use-realtime";
 import { api, RISK_META } from "@/lib/api-client";
 import type {
@@ -96,6 +103,8 @@ export default function Home() {
   const [flyTo, setFlyTo] = React.useState<{ lat: number; lng: number; zoom?: number } | null>(null);
 
   const [onboardingDismissed, setOnboardingDismissed] = React.useState(false);
+  const [selectedHazardId, setSelectedHazardId] = React.useState<string | null>(null);
+  const [showSettings, setShowSettings] = React.useState(false);
 
   // Real-time presence + hazard/SOS push via WebSocket mini-service (port 3003).
   const realtime = useRealtime({
@@ -116,6 +125,29 @@ export default function Home() {
       .catch(() => {
         /* ignore — anonymous browsing still allowed */
       });
+  }, []);
+
+  // Keyboard shortcut: press "?" to open map legend hint, "S" + Shift for SOS.
+  // (Actual SOS activation still requires the modal button to prevent accidents.)
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input/textarea.
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      // "g" then "s" opens settings (vim-style)
+      if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
+        const handler = (e2: KeyboardEvent) => {
+          if (e2.key === "s") {
+            setShowSettings(true);
+            window.removeEventListener("keydown", handler);
+          }
+        };
+        window.addEventListener("keydown", handler, { once: true });
+        setTimeout(() => window.removeEventListener("keydown", handler), 1200);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // Load nearby intel whenever current location changes.
@@ -347,6 +379,7 @@ export default function Home() {
                 presence={realtime.presence.filter((p) => p.riderId !== rider?.id)}
                 onMapClick={onMapClick}
                 onHazardClick={(id) => {
+                  setSelectedHazardId(id);
                   const h = hazards.find((x) => x.id === id);
                   if (h) setFlyTo({ lat: h.lat, lng: h.lng, zoom: 16 });
                 }}
@@ -418,15 +451,20 @@ export default function Home() {
             />
 
             <Tabs defaultValue="feed" className="w-full">
-              <TabsList className="grid h-10 w-full grid-cols-5 gap-1 rounded-lg bg-muted/50 p-1">
-                <TabsTrigger value="feed" className="gap-1 text-xs"><Radio className="h-3.5 w-3.5" />Feed</TabsTrigger>
-                <TabsTrigger value="stops" className="gap-1 text-xs"><StopsIcon className="h-3.5 w-3.5" />Stops</TabsTrigger>
-                <TabsTrigger value="report" className="gap-1 text-xs"><Siren className="h-3.5 w-3.5" />Report</TabsTrigger>
-                <TabsTrigger value="history" className="gap-1 text-xs"><History className="h-3.5 w-3.5" />History</TabsTrigger>
-                <TabsTrigger value="board" className="gap-1 text-xs"><Trophy className="h-3.5 w-3.5" />Top</TabsTrigger>
+              <TabsList className="grid h-10 w-full grid-cols-7 gap-0.5 rounded-lg bg-muted/50 p-1">
+                <TabsTrigger value="feed" className="gap-0.5 text-[11px]"><Radio className="h-3.5 w-3.5" />Feed</TabsTrigger>
+                <TabsTrigger value="stops" className="gap-0.5 text-[11px]"><StopsIcon className="h-3.5 w-3.5" />Stops</TabsTrigger>
+                <TabsTrigger value="report" className="gap-0.5 text-[11px]"><Siren className="h-3.5 w-3.5" />Report</TabsTrigger>
+                <TabsTrigger value="stats" className="gap-0.5 text-[11px]"><BarChart3 className="h-3.5 w-3.5" />Stats</TabsTrigger>
+                <TabsTrigger value="history" className="gap-0.5 text-[11px]"><History className="h-3.5 w-3.5" />Trips</TabsTrigger>
+                <TabsTrigger value="board" className="gap-0.5 text-[11px]"><Trophy className="h-3.5 w-3.5" />Top</TabsTrigger>
+                <TabsTrigger value="badges" className="gap-0.5 text-[11px]"><Award className="h-3.5 w-3.5" />Badges</TabsTrigger>
               </TabsList>
               <TabsContent value="feed" className="mt-3">
-                <div className="mb-2 flex items-center justify-end">
+                <div className="mb-2 flex items-center justify-between">
+                  <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={() => setShowSettings(true)}>
+                    <SettingsIcon className="h-3 w-3" /> Settings
+                  </Button>
                   <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={refreshFeed}>
                     <RefreshCw className="h-3 w-3" /> Refresh
                   </Button>
@@ -437,6 +475,7 @@ export default function Home() {
                   center={currentLocation}
                   onVoteChange={refreshFeed}
                   onFocus={(lat, lng) => setFlyTo({ lat, lng, zoom: 16 })}
+                  onHazardClick={(id) => setSelectedHazardId(id)}
                 />
               </TabsContent>
               <TabsContent value="stops" className="mt-3">
@@ -452,17 +491,22 @@ export default function Home() {
                   pinLocation={pinLocation}
                   onCreated={() => {
                     refreshFeed();
-                    // Real-time push to nearby riders via WebSocket.
                     const loc = pinLocation ?? currentLocation;
                     if (loc) realtime.emitHazardNew({ lat: loc.lat, lng: loc.lng, type: "other", severity: "moderate" });
                   }}
                 />
+              </TabsContent>
+              <TabsContent value="stats" className="mt-3">
+                <StatsDashboard />
               </TabsContent>
               <TabsContent value="history" className="mt-3">
                 <HistoryPanel />
               </TabsContent>
               <TabsContent value="board" className="mt-3">
                 <LeaderboardPanel riderId={rider?.id ?? null} />
+              </TabsContent>
+              <TabsContent value="badges" className="mt-3">
+                <AchievementsPanel />
               </TabsContent>
             </Tabs>
           </aside>
@@ -512,6 +556,32 @@ export default function Home() {
         }}
         onVoteUpdate={refreshFeed}
       />
+
+      {/* Hazard detail modal */}
+      <HazardDetailModal
+        hazardId={selectedHazardId}
+        onClose={() => setSelectedHazardId(null)}
+        onVoteChange={refreshFeed}
+        onFocus={(lat, lng) => setFlyTo({ lat, lng, zoom: 17 })}
+      />
+
+      {/* Settings panel (modal) */}
+      {showSettings && (
+        <div
+          className="fixed inset-0 z-[850] flex items-end justify-center bg-black/50 p-3 backdrop-blur-sm sm:items-center"
+          onClick={() => setShowSettings(false)}
+        >
+          <div className="max-h-[88vh] w-full max-w-md overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <SettingsPanel
+              onClose={() => setShowSettings(false)}
+              onAccountDeleted={() => {
+                // reload to get a new anonymous rider
+                window.location.reload();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

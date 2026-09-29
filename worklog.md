@@ -234,3 +234,80 @@ Known Limitations / Remaining:
 Files changed (Phase 3):
 - New: mini-services/realtime-service/{index.ts,package.json}, src/hooks/use-realtime.ts, src/components/{sos-button,favorites-bar,alert-bell,onboarding-modal,realtime-toasts}.tsx, src/app/api/{sos/trigger,sos/active,sos/contacts,favorites,alerts,prefs}/route.ts
 - Modified: prisma/schema.prisma, src/lib/{db,types,api-client}.ts, src/app/api/hazards/route.ts, src/app/page.tsx, src/components/rider-map.tsx
+
+---
+Task ID: 4
+Agent: Z.ai Code (cron webDevReview — Phase 4)
+Task: Assess project status via agent-browser QA, fix dark-mode map bug, add stats dashboard, hazard detail, achievements, settings, and styling improvements.
+
+Work Log:
+- Reviewed Phase 1-3 worklog. Project was stable: lint clean, tsc clean, all routes 200.
+- Found realtime service had stopped; restarted via `(nohup bun run dev &)` subshell pattern.
+- agent-browser QA in dark mode revealed: bright map tiles clash with dark UI (VLM: "jarring flash of light"), weather empty-state icon looked like "blocked", rain probability vs accumulation confusion.
+
+Styling fixes:
+- `src/components/rider-map.tsx`: Added theme-aware map tiles. Uses `useTheme` from next-themes to auto-switch to CartoDB Dark Matter tiles in dark mode. Added a 3-style tile switcher (Map / Dark / Sat) in the top-right corner with CartoDB dark tiles + Esri satellite imagery. Map container background now transitions smoothly with the tile theme.
+- `src/components/weather-card.tsx`: Improved empty state (CloudSun icon in sky-tinted circle, "Weather loads when you set a destination" with MapPin hint). Added animated WeatherGlyph (☀️☁️🌧️💨🌫️🌙) reflecting current conditions. Clarified rain metric: "Rain now" with "falling" vs "X% chance" subtext. Added an info banner when precipProbability > 0.5 but no current rain: "Rain isn't falling yet, but there's a X% chance in the next few hours. Carry wet-weather gear."
+
+Prisma schema extension:
+- Added `Achievement` model (riderId, code, earnedAt, unique [riderId, code]) for badges. Ran `bun run db:push` + `db:generate`.
+
+New backend services + API routes (5 routes):
+- `src/lib/achievements.ts`: Badge definitions (8 badges across 4 tiers: bronze/silver/gold/platinum), `awardBadge`, `evaluateBadges` (deterministic qualification based on reportsCount, votesCount, verified reports, risk assessments, active-day streak, leaderboard rank), `syncBadges` (award any newly-qualified).
+- `src/app/api/stats/route.ts`: GET /api/stats — weekly trips/distance/reports/votes, current streak, active days (14d), all-time counts, 7-day daily breakdown for chart, risk-level distribution.
+- `src/app/api/achievements/route.ts`: GET /api/achievements — syncs + returns all badges with earned status.
+- `src/app/api/hazards/[id]/route.ts`: GET /api/hazards/[id] — full hazard detail with image, description, age, confidence %, reporter info + reputation, vote history (last 50), myVote.
+- `src/app/api/settings/route.ts`: GET/PUT/DELETE — profile (displayName, region), data export (client-side JSON download), account deletion (cascade removes all data + clears cookie).
+
+New frontend components (4 components):
+- `src/components/stats-dashboard.tsx`: Weekly stats with 4 stat tiles (trips/distance/reports/votes), animated flame streak indicator, 7-day trips bar chart (color-coded by avg risk), risk-level distribution bar, all-time summary footer.
+- `src/components/achievements-panel.tsx`: 8-badge grid with tier styling (bronze/silver/gold/platinum gradients + glow), locked/unlocked states with Lock icon for unearned, earned-date stamp, earned count badge.
+- `src/components/hazard-detail-modal.tsx`: Full-screen modal with severity-colored header, hazard image (or placeholder), description, meta rows (reported age, location, reporter, reputation), community confidence bar, vote history list, confirm/dispute/show-on-map actions.
+- `src/components/settings-panel.tsx`: Profile editing (display name, region), account info (member since, last seen, reputation), data export (JSON download), danger zone with two-step delete confirmation.
+
+Main page integration (`src/app/page.tsx`):
+- Expanded tabs from 5 to 7: Feed / Stops / Report / Stats / Trips / Top / Badges.
+- Added Settings button in feed tab header.
+- Wired community feed + map hazard clicks to open HazardDetailModal.
+- Added SettingsPanel modal (triggered by button or "g then s" keyboard shortcut).
+- Account deletion reloads the page to create a fresh anonymous rider.
+- Keyboard shortcut: "g" then "s" opens settings (vim-style, ignores when typing in inputs).
+
+Community feed enhancement:
+- `src/components/community-feed.tsx`: Added `onHazardClick` prop; feed hazard items are now clickable (cursor pointer) to open the detail modal.
+
+Bug encountered & resolved (recurring from Phase 3):
+- After `db:push` added the Achievement model, the dev server's Turbopack held a stale `@prisma/client` module → `db.achievement is undefined` → 500 on /api/achievements.
+- Hardened `src/lib/db.ts` to check for BOTH `achievement` AND `sosAlert` model presence before reusing the cached singleton.
+- Clean fix: `pkill -f "next dev"`, `rm -rf .next`, restart via `(nohup bun run dev &)` subshell. Confirmed achievements API returns 8 badges after restart.
+
+Verification (agent-browser E2E of Phase 4):
+- `bun run lint` → clean. `bunx tsc --noEmit` → 0 project errors.
+- Dev server: all new routes 200 (stats, achievements, hazards/[id], settings). No 500s, no runtime errors.
+- agent-browser verified:
+  1. Dark mode map: now uses CartoDB Dark Matter tiles (attribution "© OpenStreetMap © CARTO"). Tile switcher (Map/Dark/Sat) visible and functional. VLM confirmed "map is dark-themed, matching the dark UI" — 8/10 polish.
+  2. Weather card: improved empty state with CloudSun icon, animated weather glyph, rain probability clarification banner.
+  3. Stats tab: Weekly Stats with TRIPS=0, DISTANCE=0km, REPORTS=0, VOTES=0, Current streak, "Trips this week" chart header.
+  4. Badges tab: "Achievements 0/8" with all 8 badges (First Report BRONZE, 7-Day Streak SILVER, Verified Reporter SILVER, Hazard Explorer GOLD, Weather Watcher GOLD, SOS Guardian PLATINUM, Top Contributor PLATINUM, Community Voice GOLD).
+  5. Hazard detail modal: clicked feed hazard → modal opens with 🕳️ Pothole HIGH verified, description, Reported 1h ago, Location, Reporter Rider-SEED, Community confidence 100% (3 votes), Confirm/Mark resolved/Show on map actions.
+  6. Settings panel: Profile (Display name, Home region), Member since, Last seen, Reputation, Export my data (JSON), Danger zone with Delete my account (two-step confirmation).
+  7. 7-tab layout renders correctly (Feed/Stops/Report/Stats/Trips/Top/Badges).
+- VLM final dark mode review: 8/10 — confirmed dark map tiles, glassmorphism, good contrast.
+
+Stage Summary:
+- Phase 4 added 4 major features: rider stats dashboard, hazard detail modal, achievement badges system, and settings panel with data export/delete.
+- Fixed the dark-mode map bug (bright tiles in dark UI) with theme-aware CartoDB Dark Matter tiles + a 3-style tile switcher (Map/Dark/Satellite).
+- Clarified rain probability vs accumulation with an info banner.
+- Expanded navigation to 7 tabs + settings modal with vim-style keyboard shortcut.
+- All features verified end-to-end via agent-browser with zero errors.
+
+Known Limitations / Remaining:
+- Realtime presence still in-memory (swap for Redis in multi-instance).
+- SOS still relies on in-app + tel: (no Twilio/email dispatch).
+- No automated test suite yet (unit/E2E) — Phase 5 priority.
+- Badge qualification is checked on-demand (GET /api/achievements); could be event-driven on report/vote for instant feedback.
+- Map tile switcher state resets on page reload (could persist to localStorage).
+
+Files changed (Phase 4):
+- New: src/lib/achievements.ts, src/components/{stats-dashboard,achievements-panel,hazard-detail-modal,settings-panel}.tsx, src/app/api/{stats,achievements,settings}/route.ts, src/app/api/hazards/[id]/route.ts
+- Modified: prisma/schema.prisma, src/lib/{db,types,api-client}.ts, src/app/page.tsx, src/components/{rider-map,weather-card,community-feed}.tsx

@@ -16,6 +16,7 @@ interface Props {
   center: { lat: number; lng: number } | null;
   onVoteChange: () => void;
   onFocus: (lat: number, lng: number) => void;
+  onHazardClick?: (id: string) => void;
 }
 
 function timeAgo(iso: string): string {
@@ -55,7 +56,7 @@ function FeedSkeleton() {
   );
 }
 
-export default function CommunityFeed({ feed, loading, onVoteChange, onFocus }: Props) {
+export default function CommunityFeed({ feed, loading, onVoteChange, onFocus, onHazardClick }: Props) {
   const vote = async (id: string, v: "confirm" | "dispute") => {
     try {
       const res = await api.vote(id, v);
@@ -94,7 +95,8 @@ export default function CommunityFeed({ feed, loading, onVoteChange, onFocus }: 
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.04, 0.4) }}
-                  className="rounded-lg border bg-card/40 p-2.5 transition hover:shadow-sm"
+                  className={`rounded-lg border bg-card/40 p-2.5 transition hover:shadow-sm ${item.kind === "hazard" && onHazardClick ? "cursor-pointer" : ""}`}
+                  onClick={item.kind === "hazard" && onHazardClick ? () => onHazardClick(item.id!) : undefined}
                 >
                   {item.kind === "hazard" ? (
                     <div className="space-y-1.5">

@@ -38,8 +38,21 @@ model Rider {
   favDestinations FavoriteDestination[]
   alertRecords   AlertRecord[]
   prefs          NotificationPref?
+  achievements   Achievement[]
 
   @@index([region])
+}
+
+/// Achievement badges earned by a rider (e.g. first_report, streak_7, top_contributor).
+model Achievement {
+  id        String   @id @default(cuid())
+  riderId   String
+  rider     Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  code      String   // first_report | streak_7 | top_contributor | verified_reporter | sos_guardian | hazard_explorer | weather_watcher
+  earnedAt  DateTime @default(now())
+
+  @@unique([riderId, code])
+  @@index([riderId])
 }
 
 /// Trusted emergency contacts for the SOS feature.

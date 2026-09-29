@@ -13,6 +13,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useTheme } from "next-themes";
 import { Card } from "@/components/ui/card";
 import { HAZARD_ICON, HAZARD_LABEL, SAFE_STOP_ICON } from "@/lib/api-client";
 import type { HazardItem, SafeStopItem, RiderPresence } from "@/lib/types";
@@ -106,6 +107,31 @@ export default function RiderMap(props: RiderMapProps) {
     flyTo,
   } = props;
   const [showLegend, setShowLegend] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const [tileStyle, setTileStyle] = useState<"street" | "dark" | "satellite">("street");
+
+  // Sync tile style with theme by default (user can override via the map control).
+  const isDark = resolvedTheme === "dark";
+  const effectiveTile = tileStyle === "street" && isDark ? "dark" : tileStyle;
+
+  const tileConfig = {
+    street: {
+      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      bg: "#e8eef3",
+    },
+    dark: {
+      url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      bg: "#0f172a",
+    },
+    satellite: {
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+      bg: "#1a1a1a",
+    },
+  };
+  const tc = tileConfig[effectiveTile];
 
   const initialCenter: [number, number] = center ? [center.lat, center.lng] : [12.9719, 77.6412];
 
@@ -118,14 +144,12 @@ export default function RiderMap(props: RiderMapProps) {
     <div className="relative h-full w-full overflow-hidden rounded-xl border bg-muted/30">
       <style>{`
         @keyframes rg-pulse { 0%{transform:scale(.6);opacity:.5} 70%{transform:scale(2.2);opacity:0} 100%{opacity:0} }
-        .leaflet-container { font-family: inherit; background:#e8eef3; }
+        .leaflet-container { font-family: inherit; background:${tc.bg}; transition: background .3s ease; }
         .leaflet-popup-content-wrapper { border-radius:10px; }
+        .leaflet-tile { transition: filter .3s ease; }
       `}</style>
       <MapContainer center={initialCenter} zoom={zoom} className="h-full w-full" scrollWheelZoom>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <TileLayer key={effectiveTile} attribution={tc.attribution} url={tc.url} />
         <ClickHandler onClick={onMapClick} />
         <FlyTo center={flyTarget} zoom={flyTo?.zoom} />
 
@@ -233,7 +257,28 @@ export default function RiderMap(props: RiderMapProps) {
       )}
 
       {/* Legend toggle (top-right) */}
-      <div className="absolute right-2 top-2 z-[500]">
+      <div className="absolute right-2 top-2 z-[500] flex items-center gap-1.5">
+        {/* Tile style switcher */}
+        <div className="pointer-events-auto flex items-center gap-0.5 rounded-md border bg-background/90 p-0.5 shadow-sm backdrop-blur">
+          {(["street", "dark", "satellite"] as const).map((s) => {
+            const labels = { street: "Map", dark: "Dark", satellite: "Sat" };
+            const active = effectiveTile === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setTileStyle(s)}
+                aria-label={`Switch to ${labels[s]} tiles`}
+                aria-pressed={active}
+                className={`rounded px-1.5 py-1 text-[10px] font-medium transition ${
+                  active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                {labels[s]}
+              </button>
+            );
+          })}
+        </div>
         <button
           type="button"
           onClick={() => setShowLegend((v) => !v)}

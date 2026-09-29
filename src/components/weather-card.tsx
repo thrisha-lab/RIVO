@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CloudSun, Droplets, Wind, Eye, Thermometer, CloudOff } from "lucide-react";
+import { CloudSun, Droplets, Wind, Eye, Thermometer, CloudOff, MapPin } from "lucide-react";
 import type { WeatherInfo } from "@/lib/types";
 import { describeWeatherCodeClient } from "@/lib/weather-codes-client";
 
@@ -31,6 +31,25 @@ function WeatherSkeleton() {
   );
 }
 
+/** Subtle animated weather glyph reflecting current conditions. */
+function WeatherGlyph({ weather }: { weather: WeatherInfo }) {
+  const raining = weather.precipMm >= 1;
+  const heavy = weather.precipMm >= 4;
+  const windy = weather.windGustKph >= 35;
+  const foggy = weather.visibilityM < 1500;
+  const cloudy = weather.cloudCover >= 60;
+  const night = !weather.isDay;
+
+  if (foggy) return <span className="text-3xl">🌫️</span>;
+  if (raining && heavy) return <motion.span animate={{ y: [0, 3, 0] }} transition={{ repeat: Infinity, duration: 1.2 }} className="text-3xl">⛈️</motion.span>;
+  if (raining) return <motion.span animate={{ y: [0, 2, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-3xl">🌧️</motion.span>;
+  if (windy) return <motion.span animate={{ rotate: [-5, 5, -5] }} transition={{ repeat: Infinity, duration: 2 }} className="text-3xl">💨</motion.span>;
+  if (cloudy && night) return <span className="text-3xl">☁️🌙</span>;
+  if (cloudy) return <span className="text-3xl">☁️</span>;
+  if (night) return <span className="text-3xl">🌙</span>;
+  return <motion.span animate={{ rotate: [0, 15, 0] }} transition={{ repeat: Infinity, duration: 4 }} className="text-3xl">☀️</motion.span>;
+}
+
 export default function WeatherCard({ weather, description, loading }: Props) {
   return (
     <Card>
@@ -44,29 +63,47 @@ export default function WeatherCard({ weather, description, loading }: Props) {
           <WeatherSkeleton />
         ) : !weather ? (
           <div className="flex flex-col items-center gap-2 py-5 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <CloudOff className="h-6 w-6 text-muted-foreground" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-50 dark:bg-sky-950/30">
+              <CloudSun className="h-6 w-6 text-sky-400" />
             </div>
-            <p className="text-sm text-muted-foreground">Weather loads once you set a destination.</p>
+            <p className="text-sm font-medium text-muted-foreground">Weather loads when you set a destination</p>
+            <p className="flex items-center gap-1 text-xs text-muted-foreground/70">
+              <MapPin className="h-3 w-3" /> Tap "Find me" or pick a destination on the map
+            </p>
           </div>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
             <div className="flex items-center justify-between">
-              <div>
-                <div className="text-3xl font-bold tabular-nums leading-none">{Math.round(weather.tempC)}°<span className="text-lg">C</span></div>
-                <div className="mt-0.5 text-xs text-muted-foreground">feels like {Math.round(weather.apparentTempC)}°C</div>
+              <div className="flex items-center gap-3">
+                <WeatherGlyph weather={weather} />
+                <div>
+                  <div className="text-3xl font-bold tabular-nums leading-none">{Math.round(weather.tempC)}°<span className="text-lg">C</span></div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">feels {Math.round(weather.apparentTempC)}°C</div>
+                </div>
               </div>
               <div className="text-right">
                 <div className="text-sm font-medium">{description ?? describeWeatherCodeClient(weather)}</div>
-                <div className="text-xs text-muted-foreground">{weather.isDay ? "☀️ Daytime" : "🌙 Night"} · ☁ {weather.cloudCover}%</div>
+                <div className="text-xs text-muted-foreground">{weather.isDay ? "Daytime" : "Night"} · ☁ {weather.cloudCover}%</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <Metric icon={<Droplets className="h-3.5 w-3.5" />} label="Rain" value={`${weather.precipMm.toFixed(1)} mm`} sub={`${Math.round(weather.precipProbability * 100)}% prob`} warn={weather.precipMm >= 1} />
+              <Metric
+                icon={<Droplets className="h-3.5 w-3.5" />}
+                label="Rain now"
+                value={`${weather.precipMm.toFixed(1)} mm`}
+                sub={weather.precipMm > 0 ? "falling" : `${Math.round(weather.precipProbability * 100)}% chance`}
+                warn={weather.precipMm >= 1}
+              />
               <Metric icon={<Wind className="h-3.5 w-3.5" />} label="Wind" value={`${Math.round(weather.windSpeedKph)} km/h`} sub={`gust ${Math.round(weather.windGustKph)}`} warn={weather.windGustKph >= 35} />
               <Metric icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value={`${(weather.visibilityM / 1000).toFixed(1)} km`} sub={weather.visibilityM < 1000 ? "poor" : weather.visibilityM < 2500 ? "reduced" : "good"} warn={weather.visibilityM < 2500} />
               <Metric icon={<Thermometer className="h-3.5 w-3.5" />} label="Humidity" value={`${weather.humidity}%`} sub={weather.humidity > 80 ? "humid" : "ok"} />
             </div>
+            {weather.precipProbability > 0.5 && weather.precipMm < 1 && (
+              <div className="flex items-center gap-1.5 rounded-md border border-sky-400/40 bg-sky-50 p-2 text-xs text-sky-700 dark:bg-sky-950/30 dark:text-sky-300">
+                <Droplets className="h-3.5 w-3.5 shrink-0" />
+                <span>Rain isn't falling yet, but there's a <strong>{Math.round(weather.precipProbability * 100)}% chance</strong> in the next few hours. Carry wet-weather gear.</span>
+              </div>
+            )}
           </motion.div>
         )}
       </CardContent>

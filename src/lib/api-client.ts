@@ -19,6 +19,10 @@ import type {
   FavoriteDestination,
   AlertItem,
   NotificationPrefs,
+  RiderStats,
+  HazardDetail,
+  Badge,
+  RiderSettings,
 } from "@/lib/types";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -167,6 +171,23 @@ export const api = {
 
   updatePrefs: (body: Partial<NotificationPrefs>) =>
     req<NotificationPrefs>("/api/prefs", { method: "PUT", body: JSON.stringify(body) }),
+
+  // ---- Phase 4: Stats ----
+  getStats: () => req<RiderStats>("/api/stats"),
+
+  // ---- Phase 4: Hazard detail ----
+  getHazardDetail: (id: string) => req<HazardDetail>(`/api/hazards/${id}`),
+
+  // ---- Phase 4: Achievements ----
+  getAchievements: () => req<{ badges: Badge[]; earnedCount: number; totalCount: number }>("/api/achievements"),
+
+  // ---- Phase 4: Settings ----
+  getSettings: () => req<RiderSettings>("/api/settings"),
+
+  updateSettings: (body: { displayName?: string; region?: string | null }) =>
+    req<RiderSettings>("/api/settings", { method: "PUT", body: JSON.stringify(body) }),
+
+  deleteAccount: () => req<{ deleted: boolean }>("/api/settings", { method: "DELETE" }),
 };
 
 export const RISK_META: Record<RiskLevel, { label: string; color: string; bg: string; ring: string; emoji: string }> = {

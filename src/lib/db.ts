@@ -14,8 +14,8 @@ function createClient() {
 // has the expected Phase 3 models (guards against stale cached singletons
 // after a schema push without a dev-server restart).
 let db: PrismaClient
-const cached = globalForPrisma.prisma as (PrismaClient & { sosAlert?: unknown }) | undefined
-if (cached && cached.sosAlert !== undefined) {
+const cached = globalForPrisma.prisma as (PrismaClient & { achievement?: unknown; sosAlert?: unknown }) | undefined
+if (cached && cached.achievement !== undefined && cached.sosAlert !== undefined) {
   db = cached
 } else {
   if (cached) {

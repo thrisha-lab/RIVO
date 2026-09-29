@@ -238,3 +238,63 @@ export interface RiderPresence {
   lng: number;
   sosActive?: boolean;
 }
+
+// ---- Phase 4: Stats ----
+export interface RiderStats {
+  weekly: {
+    trips: number;
+    distanceKm: number;
+    reports: number;
+    votes: number;
+    avgScore: number;
+    levelCounts: Record<string, number>;
+  };
+  streak: number;
+  activeDays: number;
+  allTime: { trips: number; reports: number; votes: number };
+  daily: { date: string; trips: number; avgScore: number }[];
+}
+
+// ---- Phase 4: Hazard detail ----
+export interface HazardDetail {
+  id: string;
+  type: string;
+  severity: string;
+  lat: number;
+  lng: number;
+  description: string | null;
+  addressLabel: string | null;
+  imageUrl: string | null;
+  confirmCount: number;
+  disputeCount: number;
+  status: string;
+  verified: boolean;
+  createdAt: string;
+  ageMin: number;
+  confidence: number;
+  totalVotes: number;
+  reporter: { displayName: string; reputation: number };
+  votes: { id: string; vote: string; createdAt: string; displayName: string }[];
+  myVote: string | null;
+}
+
+// ---- Phase 4: Achievements ----
+export interface Badge {
+  code: string;
+  label: string;
+  description: string;
+  emoji: string;
+  tier: "bronze" | "silver" | "gold" | "platinum";
+  earned: boolean;
+  earnedAt: string | null;
+}
+
+// ---- Phase 4: Settings ----
+export interface RiderSettings {
+  id: string;
+  displayName: string;
+  region: string | null;
+  reputation: number;
+  createdAt: string;
+  lastSeenAt: string;
+}
