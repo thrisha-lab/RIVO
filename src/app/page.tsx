@@ -55,6 +55,8 @@ import KeyboardShortcutsOverlay from "@/components/keyboard-shortcuts-overlay";
 import RouteComparison from "@/components/route-comparison";
 import ShareTripSummary from "@/components/share-trip-summary";
 import RideMode from "@/components/ride-mode";
+import AirQualityCard from "@/components/air-quality-card";
+import DaylightCard from "@/components/daylight-card";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/components/i18n-provider";
 import { useRealtime } from "@/hooks/use-realtime";
@@ -70,6 +72,8 @@ import type {
   AIExplanation,
   RiderIdentity,
   FavoriteDestination,
+  AirQualityInfo,
+  DaylightInfo,
 } from "@/lib/types";
 
 // Leaflet is client-only; load the map lazily.
@@ -109,6 +113,11 @@ export default function Home() {
   const [standaloneWeatherLoading, setStandaloneWeatherLoading] = React.useState(false);
   // Reverse-geocoded readable address for the current position.
   const [currentAddress, setCurrentAddress] = React.useState<string | null>(null);
+  // Phase 9: Air quality + daylight.
+  const [airQuality, setAirQuality] = React.useState<AirQualityInfo | null>(null);
+  const [airQualityLoading, setAirQualityLoading] = React.useState(false);
+  const [daylight, setDaylight] = React.useState<DaylightInfo | null>(null);
+  const [daylightLoading, setDaylightLoading] = React.useState(false);
 
   const [hazards, setHazards] = React.useState<HazardItem[]>([]);
   const [safeStops, setSafeStops] = React.useState<SafeStopItem[]>([]);
@@ -309,6 +318,24 @@ export default function Home() {
       .then((r) => setCurrentAddress(r.address))
       .catch(() => setCurrentAddress(null));
   }, [currentLocation, risk?.weather]);
+
+  // Fetch air quality + daylight when location changes (or destination set).
+  React.useEffect(() => {
+    const loc = currentLocation ?? destination;
+    if (!loc) return;
+    setAirQualityLoading(true);
+    setDaylightLoading(true);
+    api
+      .airQuality(loc.lat, loc.lng)
+      .then(setAirQuality)
+      .catch(() => setAirQuality(null))
+      .finally(() => setAirQualityLoading(false));
+    api
+      .daylight(loc.lat, loc.lng)
+      .then(setDaylight)
+      .catch(() => setDaylight(null))
+      .finally(() => setDaylightLoading(false));
+  }, [currentLocation, destination]);
 
   // Online status + offline cache write.
   const online = useOnlineStatus();
@@ -602,6 +629,11 @@ export default function Home() {
               description={weatherDesc ?? standaloneWeatherDesc}
               loading={riskLoading || standaloneWeatherLoading}
             />
+            {/* Phase 9: Air quality + daylight */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <AirQualityCard aq={airQuality} loading={airQualityLoading} />
+              <DaylightCard daylight={daylight} loading={daylightLoading} />
+            </div>
             {/* Forecast — best departure time, only relevant once we have a location */}
             <ForecastPanel location={currentLocation ?? destination} active={!!(currentLocation ?? destination)} />
             <AiExplanationPanel

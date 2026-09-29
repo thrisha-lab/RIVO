@@ -23,6 +23,8 @@ import type {
   HazardDetail,
   Badge,
   RiderSettings,
+  AirQualityInfo,
+  DaylightInfo,
 } from "@/lib/types";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -191,6 +193,14 @@ export const api = {
     req<RiderSettings>("/api/settings", { method: "PUT", body: JSON.stringify(body) }),
 
   deleteAccount: () => req<{ deleted: boolean }>("/api/settings", { method: "DELETE" }),
+
+  // ---- Phase 9: Air quality ----
+  airQuality: (lat: number, lng: number) =>
+    req<AirQualityInfo>(`/api/air-quality?lat=${lat}&lng=${lng}`),
+
+  // ---- Phase 9: Daylight ----
+  daylight: (lat: number, lng: number) =>
+    req<DaylightInfo>(`/api/daylight?lat=${lat}&lng=${lng}`),
 };
 
 export const RISK_META: Record<RiskLevel, { label: string; color: string; bg: string; ring: string; emoji: string }> = {

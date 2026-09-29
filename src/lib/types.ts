@@ -310,3 +310,32 @@ export interface DeliveryImpact {
   worthIt: "yes" | "caution" | "no";
   worthItReason: string;
 }
+
+// ---- Phase 9: Air quality ----
+export interface AirQualityInfo {
+  europeanAqi: number;
+  pm25: number;
+  pm10: number;
+  no2: number;
+  o3: number;
+  so2: number;
+  co: number;
+  fetchedAt: string;
+  level: string;
+  color: string;
+  advisory: string;
+  mask: boolean;
+  pollutantAdvisory: string | null;
+}
+
+// ---- Phase 9: Daylight ----
+export interface DaylightInfo {
+  sunrise: string;
+  sunset: string;
+  now: string;
+  isDay: boolean;
+  minutesUntilSunset: number | null;
+  minutesUntilSunrise: number | null;
+  daylightMinutes: number;
+  phase: "pre-dawn" | "dawn" | "day" | "dusk" | "night";
+}
