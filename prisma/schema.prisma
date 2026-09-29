@@ -1,0 +1,184 @@
+// RiderGuard — Prisma schema
+// AI weather safety co-pilot for delivery riders.
+// The risk engine is the deterministic source of truth. AI only explains.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Anonymous rider identity. No email/password — secure opaque token only.
+model Rider {
+  id            String   @id @default(cuid())
+  /// Hashed opaque token (never store raw). Used for auth.
+  tokenHash     String   @unique
+  /// Salted display name shown in community feed (e.g. "Rider-7F3A").
+  displayName   String
+  /// Optional home region label for local feeds.
+  region        String?
+  /// Reputation: increases with helpful reports / confirmations.
+  reputation    Int      @default(0)
+  reportsCount  Int      @default(0)
+  votesCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  lastSeenAt    DateTime @default(now())
+
+  sessions      TrackingSession[]
+  gpsPoints      GpsPoint[]
+  destinations   Destination[]
+  hazardReports  HazardReport[]
+  hazardVotes    HazardVote[]
+  riskRecords    RiskAssessment[]
+
+  @@index([region])
+}
+
+/// A rider's travel/delivery session linking GPS trail to a route + risk.
+model TrackingSession {
+  id         String    @id @default(cuid())
+  riderId    String
+  rider      Rider     @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  status     String    @default("active") // active | completed | cancelled
+  originLat  Float?
+  originLng  Float?
+  destLat    Float?
+  destLng    Float?
+  destLabel  String?
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+
+  gpsPoints  GpsPoint[]
+  riskRecords RiskAssessment[]
+
+  @@index([riderId])
+  @@index([status])
+}
+
+/// GPS trail — separate from searched destinations (privacy: locations only).
+model GpsPoint {
+  id         String   @id @default(cuid())
+  sessionId  String
+  session    TrackingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  riderId    String
+  rider      Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  lat        Float
+  lng        Float
+  accuracy   Float?   // meters
+  speed      Float?   // m/s
+  heading    Float?   // deg
+  recordedAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([riderId])
+}
+
+/// Searched/selected destinations — explicitly chosen by rider (not GPS).
+model Destination {
+  id        String   @id @default(cuid())
+  riderId   String
+  rider     Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  label     String
+  lat       Float
+  lng       Float
+  source    String   @default("search") // search | map-pin | recent
+  createdAt DateTime @default(now())
+
+  @@index([riderId])
+}
+
+/// Community hazard reports. Lifecycle: active → disputed → resolved/expired.
+model HazardReport {
+  id            String   @id @default(cuid())
+  reporterId    String
+  reporter      Rider    @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  type          String   // pothole | flooding | roadblock | construction | accident | poor_lighting | animal | slippery | other
+  severity      String   @default("moderate") // low | moderate | high | critical
+  lat           Float
+  lng           Float
+  addressLabel  String?
+  description    String?
+  imageUrl      String?
+  /// Number of riders who confirmed still present.
+  confirmCount  Int      @default(0)
+  /// Number of riders who disputed / say resolved.
+  disputeCount  Int      @default(0)
+  status        String   @default("active") // active | disputed | resolved | expired
+  verified      Boolean  @default(false) // moderator/community verified
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  votes         HazardVote[]
+
+  @@index([lat, lng])
+  @@index([status])
+  @@index([type])
+}
+
+/// Vote on a hazard: confirm (still there) or dispute (resolved).
+model HazardVote {
+  id        String   @id @default(cuid())
+  hazardId  String
+  hazard    HazardReport @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+  riderId   String
+  rider     Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  vote      String   // confirm | dispute
+  createdAt DateTime @default(now())
+
+  @@unique([hazardId, riderId])
+  @@index([hazardId])
+}
+
+/// Safe stops useful to riders: shelters, cafes, restrooms, charging.
+model SafeStop {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // cafe | shelter | restroom | charging | first_aid | parking
+  lat         Float
+  lng         Float
+  address     String?
+  hours       String?
+  amenities   String?  // comma list: wifi,charging,restroom,seating
+  rating      Float    @default(3.5)
+  createdAt   DateTime @default(now())
+
+  @@index([lat, lng])
+  @@index([type])
+}
+
+/// Cached weather snapshots to limit upstream calls.
+model WeatherCache {
+  id        String   @id @default(cuid())
+  lat       Float
+  lng       Float
+  data      String   // JSON payload
+  fetchedAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([lat, lng])
+}
+
+/// Persisted risk assessments — deterministic, source of truth.
+model RiskAssessment {
+  id           String   @id @default(cuid())
+  riderId      String
+  rider        Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  sessionId    String?
+  session      TrackingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  score        Int      // 0..100
+  level        String   // low | moderate | high | severe
+  factors      String   // JSON array of {factor, weight, value}
+  originLat    Float?
+  originLng    Float?
+  destLat      Float?
+  destLng      Float?
+  weatherSummary String?
+  createdAt    DateTime @default(now())
+
+  @@index([riderId])
+  @@index([createdAt])
+}
