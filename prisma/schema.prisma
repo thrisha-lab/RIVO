@@ -33,8 +33,86 @@ model Rider {
   hazardReports  HazardReport[]
   hazardVotes    HazardVote[]
   riskRecords    RiskAssessment[]
+  sosContacts    SosContact[]
+  sosAlerts      SosAlert[]
+  favDestinations FavoriteDestination[]
+  alertRecords   AlertRecord[]
+  prefs          NotificationPref?
 
   @@index([region])
+}
+
+/// Trusted emergency contacts for the SOS feature.
+model SosContact {
+  id        String   @id @default(cuid())
+  riderId   String
+  rider     Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  relation  String   @default("family") // family | friend | coworker | other
+  createdAt DateTime @default(now())
+
+  @@index([riderId])
+}
+
+/// An SOS alert triggered by a rider. Records location + timestamp + status.
+model SosAlert {
+  id         String    @id @default(cuid())
+  riderId    String
+  rider      Rider     @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  lat        Float
+  lng        Float
+  message    String?
+  status     String    @default("active") // active | acknowledged | resolved | false_alarm
+  triggeredAt DateTime @default(now())
+  resolvedAt  DateTime?
+
+  @@index([riderId])
+  @@index([status])
+}
+
+/// Favorite/saved destinations for quick access.
+model FavoriteDestination {
+  id        String   @id @default(cuid())
+  riderId   String
+  rider     Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  label     String
+  lat       Float
+  lng       Float
+  emoji     String   @default("📍")
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@unique([riderId, label, lat, lng])
+  @@index([riderId])
+}
+
+/// Pushed alerts for severe weather / hazards / risk changes.
+model AlertRecord {
+  id        String   @id @default(cuid())
+  riderId   String
+  rider     Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  type      String   // severe_weather | new_hazard_nearby | risk_escalation | sos_ack
+  severity  String   @default("info") // info | warning | critical
+  title     String
+  body      String
+  data      String?  // JSON payload
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([riderId, read])
+  @@index([createdAt])
+}
+
+/// Per-rider notification preferences.
+model NotificationPref {
+  riderId            String   @id
+  rider              Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  severeWeather      Boolean  @default(true)
+  newHazardNearby    Boolean  @default(true)
+  riskEscalation     Boolean  @default(true)
+  communityUpdates   Boolean  @default(false)
+  updatedAt          DateTime @updatedAt
 }
 
 /// A rider's travel/delivery session linking GPS trail to a route + risk.

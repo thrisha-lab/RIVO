@@ -14,6 +14,11 @@ import type {
   HistoryRecord,
   HistoryStats,
   LeaderboardEntry,
+  SosContact,
+  SosAlertInfo,
+  FavoriteDestination,
+  AlertItem,
+  NotificationPrefs,
 } from "@/lib/types";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -121,6 +126,47 @@ export const api = {
     if (!json.ok) throw new Error(json.error ?? "Upload failed");
     return json.data!;
   },
+
+  // ---- Phase 3: SOS ----
+  triggerSos: (body: { lat: number; lng: number; message?: string }) =>
+    req<{ alertId: string; triggeredAt: string; status: string; message: string }>("/api/sos/trigger", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  cancelSos: () => req<{ resolved: boolean }>("/api/sos/trigger", { method: "DELETE" }),
+
+  getActiveSos: () => req<{ active: SosAlertInfo | null }>("/api/sos/active"),
+
+  getSosContacts: () => req<{ contacts: SosContact[] }>("/api/sos/contacts"),
+
+  addSosContact: (body: { name: string; phone: string; relation?: string }) =>
+    req<SosContact>("/api/sos/contacts", { method: "POST", body: JSON.stringify(body) }),
+
+  deleteSosContact: (id: string) => req<{ deleted: boolean }>(`/api/sos/contacts?id=${id}`, { method: "DELETE" }),
+
+  // ---- Phase 3: Favorites ----
+  getFavorites: () => req<{ favorites: FavoriteDestination[] }>("/api/favorites"),
+
+  addFavorite: (body: { label: string; lat: number; lng: number; emoji?: string }) =>
+    req<FavoriteDestination>("/api/favorites", { method: "POST", body: JSON.stringify(body) }),
+
+  deleteFavorite: (id: string) => req<{ deleted: boolean }>(`/api/favorites?id=${id}`, { method: "DELETE" }),
+
+  touchFavorite: (id: string) => req<{ updated: boolean }>(`/api/favorites?id=${id}`, { method: "PATCH" }),
+
+  // ---- Phase 3: Alerts ----
+  getAlerts: (unreadOnly = false, limit = 20) =>
+    req<{ alerts: AlertItem[]; unreadCount: number }>(`/api/alerts?unreadOnly=${unreadOnly}&limit=${limit}`),
+
+  markAlertsRead: (body: { ids?: string[]; all?: boolean }) =>
+    req<{ marked?: number; markedAll?: boolean }>("/api/alerts", { method: "PATCH", body: JSON.stringify(body) }),
+
+  // ---- Phase 3: Notification prefs ----
+  getPrefs: () => req<NotificationPrefs>("/api/prefs"),
+
+  updatePrefs: (body: Partial<NotificationPrefs>) =>
+    req<NotificationPrefs>("/api/prefs", { method: "PUT", body: JSON.stringify(body) }),
 };
 
 export const RISK_META: Record<RiskLevel, { label: string; color: string; bg: string; ring: string; emoji: string }> = {

@@ -35,6 +35,12 @@ import AiExplanationPanel from "@/components/ai-explanation-panel";
 import ForecastPanel from "@/components/forecast-panel";
 import HistoryPanel from "@/components/history-panel";
 import LeaderboardPanel from "@/components/leaderboard-panel";
+import SosButton from "@/components/sos-button";
+import FavoritesBar from "@/components/favorites-bar";
+import AlertBell from "@/components/alert-bell";
+import OnboardingModal from "@/components/onboarding-modal";
+import RealtimeToasts from "@/components/realtime-toasts";
+import { useRealtime } from "@/hooks/use-realtime";
 import { api, RISK_META } from "@/lib/api-client";
 import type {
   RiskAssessmentData,
@@ -43,6 +49,7 @@ import type {
   FeedItem,
   AIExplanation,
   RiderIdentity,
+  FavoriteDestination,
 } from "@/lib/types";
 
 // Leaflet is client-only; load the map lazily.
@@ -87,6 +94,16 @@ export default function Home() {
   const [aiLoading, setAiLoading] = React.useState(false);
 
   const [flyTo, setFlyTo] = React.useState<{ lat: number; lng: number; zoom?: number } | null>(null);
+
+  const [onboardingDismissed, setOnboardingDismissed] = React.useState(false);
+
+  // Real-time presence + hazard/SOS push via WebSocket mini-service (port 3003).
+  const realtime = useRealtime({
+    riderId: rider?.id ?? null,
+    displayName: rider?.displayName ?? null,
+    location: currentLocation,
+    enabled: !!rider && !!currentLocation,
+  });
 
   // Resolve anonymous rider identity on mount (sets the httpOnly cookie).
   React.useEffect(() => {
@@ -289,6 +306,15 @@ export default function Home() {
                 </Badge>
               </motion.div>
             )}
+            {/* Realtime connection indicator */}
+            {rider && currentLocation && (
+              <span
+                className={`hidden h-2 w-2 rounded-full sm:inline-block ${realtime.connected ? "bg-emerald-500" : "bg-muted-foreground/30"}`}
+                title={realtime.connected ? "Live — connected to rider network" : "Connecting…"}
+                aria-label={realtime.connected ? "Connected" : "Connecting"}
+              />
+            )}
+            <AlertBell />
             <ThemeToggle />
           </div>
         </div>
@@ -300,6 +326,15 @@ export default function Home() {
           {/* LEFT: map + search + controls */}
           <section className="flex flex-col gap-3">
             <DestinationSearch onSelect={onDestinationSelect} recent={recentDestinations} />
+            <FavoritesBar
+              currentDestination={destination}
+              onSelect={(f) => {
+                setDestination({ lat: f.lat, lng: f.lng, label: f.label });
+                setPinLocation(null);
+                setFlyTo({ lat: f.lat, lng: f.lng, zoom: 14 });
+                api.touchFavorite(f.id).catch(() => {});
+              }}
+            />
 
             <div className="relative h-[44vh] min-h-[340px] w-full lg:h-[calc(100vh-220px)] lg:max-h-[780px]">
               <RiderMap
@@ -309,6 +344,7 @@ export default function Home() {
                 routeGeometry={routeGeometry}
                 hazards={hazards}
                 safeStops={safeStops}
+                presence={realtime.presence.filter((p) => p.riderId !== rider?.id)}
                 onMapClick={onMapClick}
                 onHazardClick={(id) => {
                   const h = hazards.find((x) => x.id === id);
@@ -414,7 +450,12 @@ export default function Home() {
                 <HazardReportForm
                   currentLocation={currentLocation}
                   pinLocation={pinLocation}
-                  onCreated={refreshFeed}
+                  onCreated={() => {
+                    refreshFeed();
+                    // Real-time push to nearby riders via WebSocket.
+                    const loc = pinLocation ?? currentLocation;
+                    if (loc) realtime.emitHazardNew({ lat: loc.lat, lng: loc.lng, type: "other", severity: "moderate" });
+                  }}
                 />
               </TabsContent>
               <TabsContent value="history" className="mt-3">
@@ -440,9 +481,37 @@ export default function Home() {
             <span>· Maps: OpenStreetMap</span>
             <span>· Routing: OSRM</span>
             <span>· AI: Z.ai</span>
+            <span>· Realtime: Socket.io</span>
           </div>
         </div>
       </footer>
+
+      {/* Floating SOS button — always accessible */}
+      <SosButton
+        location={currentLocation}
+        onSosTrigger={(loc) => realtime.emitSosTrigger(loc)}
+        onSosCancel={() => realtime.emitSosResolve()}
+      />
+
+      {/* First-time rider onboarding */}
+      <OnboardingModal
+        isNew={!!rider?.isNew && !onboardingDismissed}
+        onClose={() => setOnboardingDismissed(true)}
+      />
+
+      {/* Real-time push toasts */}
+      <RealtimeToasts
+        realtime={realtime}
+        onHazardPush={() => {
+          if (realtime.hazardPush) setFlyTo({ lat: realtime.hazardPush.lat, lng: realtime.hazardPush.lng, zoom: 16 });
+          realtime.clearHazardPush();
+        }}
+        onSosAlert={() => {
+          if (realtime.sosAlert) setFlyTo({ lat: realtime.sosAlert.lat, lng: realtime.sosAlert.lng, zoom: 17 });
+          realtime.clearSosAlert();
+        }}
+        onVoteUpdate={refreshFeed}
+      />
     </div>
   );
 }

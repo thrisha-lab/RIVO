@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { resolveRider } from "@/lib/auth";
 import { ok, fail, unauthorized, rateLimited } from "@/lib/api";
 import { rateLimit, getClientIp, clampLat, clampLng, sanitizeText } from "@/lib/security";
-import { HAZARD_TYPES } from "@/lib/risk-engine";
+import { HAZARD_TYPES, HAZARD_LABELS } from "@/lib/risk-engine";
 import { haversineM } from "@/lib/geo";
 
 export const runtime = "nodejs";
@@ -119,6 +119,44 @@ export async function POST(req: NextRequest) {
     where: { id: rider.id },
     data: { reputation: { increment: 1 }, reportsCount: { increment: 1 } },
   });
+
+  // Create "new_hazard_nearby" alerts for riders who recently had a risk
+  // assessment within ~2km of this hazard and opted into newHazardNearby prefs.
+  // Only for high/critical severity to avoid alert fatigue.
+  if (severity === "high" || severity === "critical") {
+    try {
+      const dLat = 0.018; // ~2km
+      const dLng = 0.018 / Math.cos((Math.abs(lat) * Math.PI) / 180 || 0.01);
+      const recentRisk = await db.riskAssessment.findMany({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) },
+          originLat: { gte: lat - dLat, lte: lat + dLat },
+          originLng: { gte: lng - dLng, lte: lng + dLng },
+        },
+        select: { riderId: true },
+        distinct: ["riderId"],
+        take: 50,
+      });
+      const nearbyRiderIds = recentRisk.map((r) => r.riderId).filter((id) => id !== rider.id);
+      if (nearbyRiderIds.length > 0) {
+        const label = HAZARD_LABELS[type] ?? type;
+        const title = `New ${severity} hazard nearby`;
+        const bodyText = `${label} reported near your route. Stay alert.`;
+        await db.alertRecord.createMany({
+          data: nearbyRiderIds.map((rid) => ({
+            riderId: rid,
+            type: "new_hazard_nearby",
+            severity: severity === "critical" ? "critical" : "warning",
+            title,
+            body: bodyText,
+            data: JSON.stringify({ hazardId: hazard.id, lat, lng, type, severity }),
+          })),
+        });
+      }
+    } catch {
+      // alert creation is best-effort; never fail the hazard POST
+    }
+  }
 
   return ok({
     id: hazard.id,

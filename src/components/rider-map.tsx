@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -15,7 +15,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Card } from "@/components/ui/card";
 import { HAZARD_ICON, HAZARD_LABEL, SAFE_STOP_ICON } from "@/lib/api-client";
-import type { HazardItem, SafeStopItem } from "@/lib/types";
+import type { HazardItem, SafeStopItem, RiderPresence } from "@/lib/types";
+import { Users, Info, X } from "lucide-react";
 
 // Fix default marker icons (Leaflet bundling quirk).
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
@@ -84,6 +85,7 @@ export interface RiderMapProps {
   routeGeometry: { lat: number; lng: number }[] | null;
   hazards: HazardItem[];
   safeStops: SafeStopItem[];
+  presence?: RiderPresence[];
   onMapClick: (lat: number, lng: number) => void;
   onHazardClick?: (id: string) => void;
   flyTo: { lat: number; lng: number; zoom?: number } | null;
@@ -98,10 +100,12 @@ export default function RiderMap(props: RiderMapProps) {
     routeGeometry,
     hazards,
     safeStops,
+    presence = [],
     onMapClick,
     onHazardClick,
     flyTo,
   } = props;
+  const [showLegend, setShowLegend] = useState(false);
 
   const initialCenter: [number, number] = center ? [center.lat, center.lng] : [12.9719, 77.6412];
 
@@ -182,12 +186,90 @@ export default function RiderMap(props: RiderMapProps) {
             </Popup>
           </Marker>
         ))}
+
+        {/* Nearby riders (presence) — small dots */}
+        {presence.map((r) => (
+          <CircleMarker
+            key={r.riderId}
+            center={[r.lat, r.lng]}
+            radius={6}
+            pathOptions={{
+              color: r.sosActive ? "#ef4444" : "#8b5cf6",
+              fillColor: r.sosActive ? "#ef4444" : "#8b5cf6",
+              fillOpacity: 0.6,
+              weight: 2,
+            }}
+          >
+            <Popup>
+              <div className="space-y-0.5 text-xs">
+                <div className="font-semibold">{r.displayName}</div>
+                {r.sosActive && <div className="font-bold text-red-600">⚠ SOS ACTIVE</div>}
+                <div className="text-muted-foreground">Nearby rider (live)</div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
       </MapContainer>
+
+      {/* Tap hint */}
       <div className="pointer-events-none absolute bottom-2 left-2 z-[500]">
         <Card className="pointer-events-auto px-2 py-1 text-[10px] text-muted-foreground shadow-sm">
           Tap map to set destination
         </Card>
       </div>
+
+      {/* Presence badge (top-left) */}
+      {presence.length > 0 && (
+        <div className="pointer-events-none absolute left-2 top-2 z-[500]">
+          <Card className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 shadow-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500" />
+            </span>
+            <Users className="h-3 w-3 text-violet-500" />
+            <span className="text-[11px] font-medium">{presence.length} rider{presence.length !== 1 ? "s" : ""} online nearby</span>
+          </Card>
+        </div>
+      )}
+
+      {/* Legend toggle (top-right) */}
+      <div className="absolute right-2 top-2 z-[500]">
+        <button
+          type="button"
+          onClick={() => setShowLegend((v) => !v)}
+          aria-label="Toggle map legend"
+          className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/90 shadow-sm backdrop-blur transition hover:bg-accent"
+        >
+          <Info className="h-4 w-4" />
+        </button>
+        {showLegend && (
+          <Card className="absolute right-0 top-9 w-48 p-3 text-xs shadow-lg">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-semibold">Legend</span>
+              <button onClick={() => setShowLegend(false)} aria-label="Close legend"><X className="h-3 w-3" /></button>
+            </div>
+            <div className="space-y-1.5">
+              <LegendRow color="#0ea5e9" label="Your location" glyph="◎" />
+              <LegendRow color="#dc2626" label="Destination" glyph="📍" />
+              <LegendRow color="#0ea5e9" label="Route" glyph="━" />
+              <LegendRow color="#ef4444" label="Critical hazard" glyph="🔴" />
+              <LegendRow color="#f97316" label="High hazard" glyph="🟠" />
+              <LegendRow color="#f59e0b" label="Moderate hazard" glyph="🟡" />
+              <LegendRow color="#10b981" label="Safe stop" glyph="🛡️" />
+              <LegendRow color="#8b5cf6" label="Rider online" glyph="●" />
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LegendRow({ color, label, glyph }: { color: string; label: string; glyph: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex h-4 w-4 items-center justify-center text-[10px] font-bold" style={{ color }}>{glyph}</span>
+      <span className="text-muted-foreground">{label}</span>
     </div>
   );
 }

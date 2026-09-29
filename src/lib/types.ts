@@ -179,3 +179,62 @@ export interface LeaderboardEntry {
   lastSeenAt: string;
   isYou?: boolean;
 }
+
+// ---- Phase 3: SOS ----
+export interface SosContact {
+  id: string;
+  name: string;
+  phone: string;
+  relation: string;
+  createdAt: string;
+}
+
+export interface SosAlertInfo {
+  id: string;
+  lat: number;
+  lng: number;
+  message: string | null;
+  status: string;
+  triggeredAt: string;
+}
+
+// ---- Phase 3: Favorites ----
+export interface FavoriteDestination {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  emoji: string;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+// ---- Phase 3: Alerts ----
+export interface AlertItem {
+  id: string;
+  type: string;
+  severity: string;
+  title: string;
+  body: string;
+  data: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+// ---- Phase 3: Notification prefs ----
+export interface NotificationPrefs {
+  riderId: string;
+  severeWeather: boolean;
+  newHazardNearby: boolean;
+  riskEscalation: boolean;
+  communityUpdates: boolean;
+}
+
+// ---- Phase 3: Real-time presence ----
+export interface RiderPresence {
+  riderId: string;
+  displayName: string;
+  lat: number;
+  lng: number;
+  sosActive?: boolean;
+}
