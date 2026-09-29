@@ -13,6 +13,7 @@ interface OpenMeteoResponse {
     apparent_temperature: number;
     wind_speed_10m: number;
     wind_gusts_10m: number;
+    wind_direction_10m?: number;
     precipitation: number;
     relative_humidity_2m: number;
     visibility: number;
@@ -51,7 +52,7 @@ export async function getWeather(lat: number, lng: number): Promise<WeatherSnaps
   }
 
   try {
-    const url = `${OPEN_METEO}?latitude=${rLat}&longitude=${rLng}&current=temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,precipitation,relative_humidity_2m,visibility,cloud_cover,weather_code,is_day,uv_index&timezone=auto`;
+    const url = `${OPEN_METEO}?latitude=${rLat}&longitude=${rLng}&current=temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,relative_humidity_2m,visibility,cloud_cover,weather_code,is_day,uv_index&timezone=auto`;
     const res = await fetch(url, {
       // cache weather 10 min at fetch layer too
       next: { revalidate: 600 },
@@ -72,6 +73,7 @@ export async function getWeather(lat: number, lng: number): Promise<WeatherSnaps
       weatherCode: c.weather_code,
       isDay: c.is_day === 1,
       uvIndex: c.uv_index,
+      windDirectionDeg: c.wind_direction_10m,
     };
 
     const expiresAt = new Date(now.getTime() + 15 * 60 * 1000);

@@ -21,6 +21,8 @@ export interface WeatherInfo {
   isDay: boolean;
   cloudCover: number;
   humidity: number;
+  uvIndex?: number;
+  windDirectionDeg?: number;
 }
 
 export interface RiskAssessmentData {

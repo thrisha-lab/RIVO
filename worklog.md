@@ -610,3 +610,56 @@ Known Limitations / Remaining:
 Files changed (Phase 9):
 - New: src/lib/{air-quality-service,daylight-service}.ts, src/components/{air-quality-card,daylight-card}.tsx, src/app/api/{air-quality,daylight}/route.ts, tests/unit/{air-quality,daylight}.test.ts
 - Modified: src/lib/{types,api-client}.ts, src/app/page.tsx (AQI + daylight state + fetch + cards)
+
+---
+Task ID: 10
+Agent: Z.ai Code (cron webDevReview — Phase 10)
+Task: Assess project status via agent-browser QA, add wind direction compass, hazard filtering, UV index, and unit tests.
+
+Work Log:
+- Reviewed Phase 1-9 worklog. Project stable: lint clean, tsc clean, 122 tests passing, all routes 200.
+- Verified realtime service running on port 3003.
+- agent-browser QA: VLM confirmed need for hazard overlays, filtering, and proximity alerts. No bugs found.
+
+Wind direction compass (new feature):
+- `src/components/wind-compass.tsx`: SVG compass rose with N/S/E/W ticks and an animated arrow that rotates to show wind direction (arrow points TO direction, opposite of FROM). Shows speed + gust + cardinal label. Color turns orange when gusts ≥ 35 km/h. Falls back to a simple speed badge when direction is unavailable.
+- Weather service updated to fetch `wind_direction_10m` from Open-Meteo. `WeatherSnapshot` + `WeatherInfo` types extended with `windDirectionDeg`. Risk API response now includes `windDirectionDeg` + `uvIndex`.
+- Integrated as a floating overlay at bottom-left of the map.
+
+Hazard filtering (new feature):
+- `src/components/hazard-filter.tsx`: Collapsible filter panel with severity chips (All/Low/Moderate/High/Critical with color dots) and type chips (Pothole, Flooding, etc.). Shows "N hidden" badge and result count "X/Y". Clear button resets filters.
+- Page: `filteredHazards` memo filters the hazards array by active type + severity filters. Map markers use `filteredHazards` (markers update live). Community feed items are filtered to match. Filter state managed via `activeTypeFilters` (Set<string>) + `activeSeverities` (Set<SeverityFilter>).
+- Verified: clicking "High" → "3 hidden, 1/4" (only high-severity pothole visible). Clear resets to 4/4.
+
+UV index (new feature):
+- `src/lib/uv-service.ts`: `classifyUv()` returns level (Low/Moderate/High/Very High/Extreme) with color, advisory, burn time estimate (minutes to sunburn for fair skin), and sunscreen flag. `formatBurnTime()` helper.
+- `src/components/uv-index-card.tsx`: Card with colored UV badge, sunscreen SPF 50+ indicator, burn-time bar, and advisory text. Uses the `uvIndex` from the weather data (already fetched by Open-Meteo).
+- Integrated into the 2-column grid alongside Air Quality + Daylight.
+
+Unit tests (15 new tests, total 137):
+- `tests/unit/uv-service.test.ts` (15 tests): classifyUv level thresholds (Low/Moderate/High/Very High/Extreme), sunscreen flag, burn time decreasing, advisory non-empty, valid hex color, boundary values (0, 3, 8, 11), formatBurnTime (minutes < 60, >= 60, 5min).
+
+Verification (agent-browser E2E of Phase 10):
+- `bun run lint` → clean. `bunx tsc --noEmit` → 0 errors. `bun test tests/unit/` → 137 pass, 0 fail.
+- Dev server: all routes 200, no runtime errors.
+- agent-browser verified:
+  1. UV Index card: shows "UV Index 0.0, Low, Skin burn risk, 1h until sunburn, Minimal sun risk. No protection needed."
+  2. Wind compass: floating on map, shows "0 km/h gust 5" (direction arrow visible).
+  3. Hazard filter: "Filter Hazards 4/4" → expand → Severity chips (All/Low/Moderate/High/Critical) + Type chips (Pothole/Poor lighting/Construction) → clicked "High" → "3 hidden, 1/4" (only high-severity pothole visible) → Clear → back to 4/4.
+  4. All existing features still work (GPS, weather, risk, feed, tabs).
+- VLM final review: 8/10 — recognized Hazard Filtering, community feed, SOS, profile, theme toggle.
+
+Stage Summary:
+- Phase 10 added 3 features: wind direction compass (SVG with animated arrow), hazard filtering by type + severity (live filters map + feed), and UV index with burn-time advisory.
+- Test suite grew from 122 to 137 tests (+15) covering UV classification.
+- Weather service extended with wind_direction_10m + uv_index passthrough.
+- All features verified end-to-end via agent-browser with zero errors.
+
+Known Limitations / Remaining:
+- Wind direction may not always be available (depends on Open-Meteo response); compass gracefully falls back to speed badge.
+- UV index only available during daytime (Open-Meteo returns 0 at night); card shows "Low" which is correct.
+- Precipitation radar overlay was planned but deferred to Phase 11.
+
+Files changed (Phase 10):
+- New: src/components/{wind-compass,hazard-filter,uv-index-card}.tsx, src/lib/uv-service.ts, tests/unit/uv-service.test.ts
+- Modified: src/lib/{weather-service,risk-engine,types}.ts (windDirectionDeg + uvIndex), src/app/api/risk/route.ts (pass through new fields), src/app/page.tsx (wind compass overlay, hazard filter, UV card, filtered hazards)

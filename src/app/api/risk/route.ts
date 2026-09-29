@@ -179,6 +179,8 @@ export async function GET(req: NextRequest) {
           isDay: weather.isDay,
           cloudCover: weather.cloudCover,
           humidity: weather.humidity,
+          uvIndex: weather.uvIndex,
+          windDirectionDeg: weather.windDirectionDeg,
         }
       : null,
     route: route

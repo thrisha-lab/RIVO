@@ -57,6 +57,9 @@ import ShareTripSummary from "@/components/share-trip-summary";
 import RideMode from "@/components/ride-mode";
 import AirQualityCard from "@/components/air-quality-card";
 import DaylightCard from "@/components/daylight-card";
+import WindCompass from "@/components/wind-compass";
+import UvIndexCard from "@/components/uv-index-card";
+import HazardFilter, { type SeverityFilter } from "@/components/hazard-filter";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/components/i18n-provider";
 import { useRealtime } from "@/hooks/use-realtime";
@@ -125,6 +128,9 @@ export default function Home() {
   const [feedLoading, setFeedLoading] = React.useState(false);
   const [stopsLoading, setStopsLoading] = React.useState(false);
   const [hazardsLoading, setHazardsLoading] = React.useState(false);
+  // Phase 10: Hazard filters
+  const [activeTypeFilters, setActiveTypeFilters] = React.useState<Set<string>>(new Set());
+  const [activeSeverityFilters, setActiveSeverityFilters] = React.useState<Set<SeverityFilter>>(new Set(["all"]));
 
   const [aiExplanation, setAiExplanation] = React.useState<AIExplanation | null>(null);
   const [aiLoading, setAiLoading] = React.useState(false);
@@ -449,6 +455,39 @@ export default function Home() {
 
   const routeGeometry = overrideGeometry ?? risk?.route?.geometry ?? null;
 
+  // Phase 10: Filtered hazards for map + feed.
+  const allHazardTypes = React.useMemo(() => Array.from(new Set(hazards.map((h) => h.type))), [hazards]);
+  const filteredHazards = React.useMemo(() => {
+    const sevAll = activeSeverityFilters.has("all");
+    return hazards.filter((h) => {
+      if (!sevAll && !activeSeverityFilters.has(h.severity as SeverityFilter)) return false;
+      if (activeTypeFilters.size > 0 && !activeTypeFilters.has(h.type)) return false;
+      return true;
+    });
+  }, [hazards, activeTypeFilters, activeSeverityFilters]);
+
+  const toggleTypeFilter = React.useCallback((type: string) => {
+    setActiveTypeFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  }, []);
+  const toggleSeverityFilter = React.useCallback((sev: SeverityFilter) => {
+    setActiveSeverityFilters((prev) => {
+      const next = new Set(prev);
+      if (sev === "all") return new Set(["all"]);
+      next.delete("all");
+      if (next.has(sev)) next.delete(sev); else next.add(sev);
+      if (next.size === 0) return new Set(["all"]);
+      return next;
+    });
+  }, []);
+  const clearFilters = React.useCallback(() => {
+    setActiveTypeFilters(new Set());
+    setActiveSeverityFilters(new Set(["all"]));
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-background to-muted/20">
       {/* Header */}
@@ -528,7 +567,7 @@ export default function Home() {
                 currentLocation={currentLocation}
                 destination={destination}
                 routeGeometry={routeGeometry}
-                hazards={hazards}
+                hazards={filteredHazards}
                 safeStops={safeStops}
                 presence={realtime.presence.filter((p) => p.riderId !== rider?.id)}
                 onMapClick={onMapClick}
@@ -539,6 +578,16 @@ export default function Home() {
                 }}
                 flyTo={flyTo}
               />
+              {/* Wind compass overlay (bottom-left of map) */}
+              {(risk?.weather ?? standaloneWeather) && (risk?.weather ?? standaloneWeather)?.windSpeedKph != null && (
+                <div className="absolute bottom-10 left-2 z-[500]">
+                  <WindCompass
+                    windSpeedKph={(risk?.weather ?? standaloneWeather)!.windSpeedKph}
+                    windGustKph={(risk?.weather ?? standaloneWeather)!.windGustKph}
+                    windDirectionDeg={(risk?.weather ?? standaloneWeather)?.windDirectionDeg}
+                  />
+                </div>
+              )}
               {destination && (
                 <button
                   type="button"
@@ -629,10 +678,11 @@ export default function Home() {
               description={weatherDesc ?? standaloneWeatherDesc}
               loading={riskLoading || standaloneWeatherLoading}
             />
-            {/* Phase 9: Air quality + daylight */}
+            {/* Phase 9: Air quality + daylight + UV */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <AirQualityCard aq={airQuality} loading={airQualityLoading} />
               <DaylightCard daylight={daylight} loading={daylightLoading} />
+              <UvIndexCard weather={risk?.weather ?? standaloneWeather} loading={riskLoading || standaloneWeatherLoading} />
             </div>
             {/* Forecast — best departure time, only relevant once we have a location */}
             <ForecastPanel location={currentLocation ?? destination} active={!!(currentLocation ?? destination)} />
@@ -661,8 +711,28 @@ export default function Home() {
                     <RefreshCw className="h-3 w-3" /> {t("common.refresh")}
                   </Button>
                 </div>
+                {hazards.length > 0 && (
+                  <div className="mb-2">
+                    <HazardFilter
+                      hazardTypes={allHazardTypes}
+                      activeTypes={activeTypeFilters}
+                      activeSeverities={activeSeverityFilters}
+                      onToggleType={toggleTypeFilter}
+                      onToggleSeverity={toggleSeverityFilter}
+                      onClear={clearFilters}
+                      resultCount={filteredHazards.length}
+                      totalCount={hazards.length}
+                    />
+                  </div>
+                )}
                 <CommunityFeed
-                  feed={feed}
+                  feed={feed.filter((item) => {
+                    if (item.kind !== "hazard") return true;
+                    if (!item.id) return true;
+                    const h = hazards.find((x) => x.id === item.id);
+                    if (!h) return true;
+                    return filteredHazards.includes(h);
+                  })}
                   loading={feedLoading}
                   center={currentLocation}
                   onVoteChange={refreshFeed}

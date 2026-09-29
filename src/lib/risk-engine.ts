@@ -16,6 +16,7 @@ export interface WeatherSnapshot {
   apparentTempC: number;
   windSpeedKph: number;
   windGustKph: number;
+  windDirectionDeg?: number;
   precipMm: number;
   precipProbability: number; // 0..1
   humidity: number; // %
