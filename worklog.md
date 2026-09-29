@@ -663,3 +663,57 @@ Known Limitations / Remaining:
 Files changed (Phase 10):
 - New: src/components/{wind-compass,hazard-filter,uv-index-card}.tsx, src/lib/uv-service.ts, tests/unit/uv-service.test.ts
 - Modified: src/lib/{weather-service,risk-engine,types}.ts (windDirectionDeg + uvIndex), src/app/api/risk/route.ts (pass through new fields), src/app/page.tsx (wind compass overlay, hazard filter, UV card, filtered hazards)
+
+---
+Task ID: 11
+Agent: Z.ai Code (cron webDevReview — Phase 11)
+Task: Assess project status via agent-browser QA, fix rain hint bug, add precipitation radar, quick-report FAB, mobile bottom nav, and hazard filter tests.
+
+Work Log:
+- Reviewed Phase 1-10 worklog. Project stable: lint clean, tsc clean, 137 tests passing, all routes 200.
+- Verified realtime service running on port 3003.
+- agent-browser QA: VLM identified a data inconsistency bug — rain hint banner says "Rain isn't falling yet" when 0.1mm IS falling. Also suggested quick-action features for active riding.
+
+Bug fix:
+- **Rain hint banner logic error** (`src/components/weather-card.tsx`): The condition `precipMm < 1` allowed the "Rain isn't falling yet" banner to show when 0.1mm was falling. Changed to `precipMm === 0` so the banner only shows when NO rain is currently falling but there's a high probability. Verified: the contradictory banner no longer appears when rain is falling.
+
+Precipitation radar overlay (new feature):
+- `src/components/rider-map.tsx`: Added RainViewer free radar tile overlay (no API key needed). Toggle button (CloudRain icon) in the map controls bar. When enabled, overlays semi-transparent precipitation tiles at 60% opacity with zIndex 1000. Verified: 8 radar tiles loaded on the map.
+- Toggle styled sky-blue when active, matching the weather theme.
+
+Quick-report FAB (new feature):
+- `src/components/quick-report-fab.tsx`: Floating orange button (bottom-left, z-950) for fast hazard reporting during active riding. Opens a compact modal with: current GPS coordinates, 6 hazard type chips (Pothole/Flooding/Construction/Poor lighting/Slippery/Roadblock), default "Moderate" severity, and a "Report now" button. Submits via `api.createHazard()` at the rider's current location. Shows success animation on submit.
+- Verified: clicked FAB → modal opens with coordinates 12.9719, 77.6412 → selected Pothole → "Report now" → "Quick report submitted! Pothole reported at your location." → POST /api/hazards 200.
+
+Mobile bottom navigation (new feature):
+- `src/components/bottom-nav.tsx`: Fixed bottom navigation bar (lg:hidden, mobile only) with 5 tabs (Feed/Stops/Report/Stats/Trips) and animated spring indicator. Synced with the main Tabs component via `activeTab` state + `onValueChange`. Safe-area inset padding for notch devices.
+- Page: Tabs changed from `defaultValue="feed"` to `value={activeTab} onValueChange={setActiveTab}` for two-way binding with bottom nav.
+
+Unit tests (15 new tests, total 152):
+- `tests/unit/hazard-filter.test.ts` (15 tests): filterHazards (no filters, type filter, severity filter, type+severity intersection, multiple severities union, multiple types union, empty result), toggleType (add/remove/preserve others), toggleSeverity (clicking "all" resets, removes "all", toggles active, adds inactive, multiple selections persist).
+
+Verification (agent-browser E2E of Phase 11):
+- `bun run lint` → clean. `bunx tsc --noEmit` → 0 errors. `bun test tests/unit/` → 152 pass, 0 fail.
+- Dev server: all routes 200, no runtime errors.
+- agent-browser verified:
+  1. Rain hint bug: no longer shows "Rain isn't falling yet" when 0.1mm is falling (only shows when precipMm === 0).
+  2. Precipitation radar: CloudRain toggle button → 8 radar tiles loaded on map (RainViewer overlay at 60% opacity).
+  3. Quick-report FAB: orange button (bottom-left) → modal with coordinates + 6 type chips + "Report now" → "Quick report submitted! Pothole reported at your location." → POST 200.
+  4. Mobile bottom nav: renders (hidden on desktop via lg:hidden), synced with main Tabs.
+  5. All existing features still work.
+- No console errors, no runtime errors.
+
+Stage Summary:
+- Phase 11 fixed a real data-inconsistency bug (rain hint banner) and added 3 features: precipitation radar overlay (RainViewer), quick-report FAB for active riding, and mobile bottom navigation bar.
+- Test suite grew from 137 to 152 tests (+15) covering hazard filter combinatorics.
+- All features verified end-to-end via agent-browser with zero errors.
+
+Known Limitations / Remaining:
+- RainViewer radar tiles may not have data for all regions/times; gracefully shows no overlay.
+- Quick-report FAB defaults to "moderate" severity for speed; riders can use the full Report tab for detailed reports with photos.
+- Bottom nav shows 5 of 7 tabs on mobile (Feed/Stops/Report/Stats/Trips); Top + Badges accessible via the main tab bar.
+- Trip planner (compare departure times) was planned but deferred to Phase 12.
+
+Files changed (Phase 11):
+- New: src/components/{quick-report-fab,bottom-nav}.tsx, tests/unit/hazard-filter.test.ts
+- Modified: src/components/{rider-map,weather-card}.tsx (radar overlay + rain hint fix), src/app/page.tsx (QuickReportFab, BottomNav, activeTab state, Tabs binding)

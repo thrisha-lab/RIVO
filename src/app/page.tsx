@@ -60,6 +60,8 @@ import DaylightCard from "@/components/daylight-card";
 import WindCompass from "@/components/wind-compass";
 import UvIndexCard from "@/components/uv-index-card";
 import HazardFilter, { type SeverityFilter } from "@/components/hazard-filter";
+import QuickReportFab from "@/components/quick-report-fab";
+import BottomNav from "@/components/bottom-nav";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/components/i18n-provider";
 import { useRealtime } from "@/hooks/use-realtime";
@@ -131,6 +133,8 @@ export default function Home() {
   // Phase 10: Hazard filters
   const [activeTypeFilters, setActiveTypeFilters] = React.useState<Set<string>>(new Set());
   const [activeSeverityFilters, setActiveSeverityFilters] = React.useState<Set<SeverityFilter>>(new Set(["all"]));
+  // Phase 11: Active tab for bottom nav sync
+  const [activeTab, setActiveTab] = React.useState("feed");
 
   const [aiExplanation, setAiExplanation] = React.useState<AIExplanation | null>(null);
   const [aiLoading, setAiLoading] = React.useState(false);
@@ -664,7 +668,7 @@ export default function Home() {
           </section>
 
           {/* RIGHT: intelligence panels */}
-          <aside className="flex flex-col gap-3 pb-20 lg:pb-0">
+          <aside className="flex flex-col gap-3 pb-20 lg:pb-0 lg:pb-3">
             <div className="flex items-center justify-between gap-2">
               <RiskDashboard risk={risk} loading={riskLoading} onExplain={explain} explaining={aiLoading} />
             </div>
@@ -692,7 +696,7 @@ export default function Home() {
               levelLabel={risk ? RISK_META[risk.level].label : undefined}
             />
 
-            <Tabs defaultValue="feed" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid h-10 w-full grid-cols-7 gap-0.5 rounded-lg bg-muted/50 p-1">
                 <TabsTrigger value="feed" className="gap-0.5 text-[11px]"><Radio className="h-3.5 w-3.5" />{t("tab.feed")}</TabsTrigger>
                 <TabsTrigger value="stops" className="gap-0.5 text-[11px]"><StopsIcon className="h-3.5 w-3.5" />{t("tab.stops")}</TabsTrigger>
@@ -867,6 +871,12 @@ export default function Home() {
         tripElapsedSec={tripElapsed}
         aiExplanation={aiExplanation}
       />
+
+      {/* Quick-report FAB (bottom-left, for active riding) */}
+      <QuickReportFab location={currentLocation} onCreated={refreshFeed} />
+
+      {/* Mobile bottom navigation (hidden on desktop) */}
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }

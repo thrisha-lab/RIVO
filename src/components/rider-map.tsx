@@ -18,7 +18,7 @@ import { useTheme } from "next-themes";
 import { Card } from "@/components/ui/card";
 import { HAZARD_ICON, HAZARD_LABEL, SAFE_STOP_ICON } from "@/lib/api-client";
 import type { HazardItem, SafeStopItem, RiderPresence } from "@/lib/types";
-import { Users, Info, X, Flame } from "lucide-react";
+import { Users, Info, X, Flame, CloudRain } from "lucide-react";
 
 // Fix default marker icons (Leaflet bundling quirk).
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
@@ -109,6 +109,7 @@ export default function RiderMap(props: RiderMapProps) {
   } = props;
   const [showLegend, setShowLegend] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showRadar, setShowRadar] = useState(false);
   const { resolvedTheme } = useTheme();
   // Persist tile style preference across reloads (Phase 5).
   const [tileStyle, setTileStyle] = useState<"street" | "dark" | "satellite">(() => {
@@ -163,6 +164,16 @@ export default function RiderMap(props: RiderMapProps) {
       `}</style>
       <MapContainer center={initialCenter} zoom={zoom} className="h-full w-full" scrollWheelZoom>
         <TileLayer key={effectiveTile} attribution={tc.attribution} url={tc.url} />
+        {/* RainViewer precipitation radar overlay */}
+        {showRadar && (
+          <TileLayer
+            key="radar"
+            url="https://tile.rainviewer.com/v2/radar/{z}/{x}/{y}/2/1_1.png"
+            opacity={0.6}
+            attribution="&copy; RainViewer"
+            zIndex={1000}
+          />
+        )}
         <ClickHandler onClick={onMapClick} />
         <FlyTo center={flyTarget} zoom={flyTo?.zoom} />
 
@@ -287,8 +298,20 @@ export default function RiderMap(props: RiderMapProps) {
         </div>
       )}
 
-      {/* Heatmap + Legend toggle (top-right) */}
+      {/* Radar + Heatmap + Legend toggle (top-right) */}
       <div className="absolute right-2 top-2 z-[500] flex items-center gap-1.5">
+        {/* Radar toggle */}
+        <button
+          type="button"
+          onClick={() => setShowRadar((v) => !v)}
+          aria-label="Toggle precipitation radar"
+          aria-pressed={showRadar}
+          className={`pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm backdrop-blur transition ${
+            showRadar ? "border-sky-400 bg-sky-50 text-sky-600 dark:bg-sky-950/30 dark:text-sky-400" : "bg-background/90 text-foreground hover:bg-accent"
+          }`}
+        >
+          <CloudRain className="h-4 w-4" />
+        </button>
         {/* Heatmap toggle */}
         <button
           type="button"

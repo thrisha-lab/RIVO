@@ -98,7 +98,7 @@ export default function WeatherCard({ weather, description, loading }: Props) {
               <Metric icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value={`${(weather.visibilityM / 1000).toFixed(1)} km`} sub={weather.visibilityM < 1000 ? "poor" : weather.visibilityM < 2500 ? "reduced" : "good"} warn={weather.visibilityM < 2500} />
               <Metric icon={<Thermometer className="h-3.5 w-3.5" />} label="Humidity" value={`${weather.humidity}%`} sub={weather.humidity > 80 ? "humid" : "ok"} />
             </div>
-            {weather.precipProbability > 0.5 && weather.precipMm < 1 && (
+            {weather.precipProbability > 0.5 && weather.precipMm === 0 && (
               <div className="flex items-center gap-1.5 rounded-md border border-sky-400/40 bg-sky-50 p-2 text-xs text-sky-700 dark:bg-sky-950/30 dark:text-sky-300">
                 <Droplets className="h-3.5 w-3.5 shrink-0" />
                 <span>Rain isn't falling yet, but there's a <strong>{Math.round(weather.precipProbability * 100)}% chance</strong> in the next few hours. Carry wet-weather gear.</span>
