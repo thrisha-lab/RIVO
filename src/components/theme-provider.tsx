@@ -5,7 +5,7 @@ import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  return <NextThemesProvider attribute="class" defaultTheme="light" enableSystem>{children}</NextThemesProvider>;
+  return <NextThemesProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>{children}</NextThemesProvider>;
 }
 
 export function ThemeToggle() {

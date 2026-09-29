@@ -8,6 +8,7 @@ import {
   Polyline,
   Popup,
   CircleMarker,
+  Circle,
   useMap,
   useMapEvents,
 } from "react-leaflet";
@@ -17,7 +18,7 @@ import { useTheme } from "next-themes";
 import { Card } from "@/components/ui/card";
 import { HAZARD_ICON, HAZARD_LABEL, SAFE_STOP_ICON } from "@/lib/api-client";
 import type { HazardItem, SafeStopItem, RiderPresence } from "@/lib/types";
-import { Users, Info, X } from "lucide-react";
+import { Users, Info, X, Flame } from "lucide-react";
 
 // Fix default marker icons (Leaflet bundling quirk).
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
@@ -107,6 +108,7 @@ export default function RiderMap(props: RiderMapProps) {
     flyTo,
   } = props;
   const [showLegend, setShowLegend] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const { resolvedTheme } = useTheme();
   // Persist tile style preference across reloads (Phase 5).
   const [tileStyle, setTileStyle] = useState<"street" | "dark" | "satellite">(() => {
@@ -212,6 +214,20 @@ export default function RiderMap(props: RiderMapProps) {
           </Marker>
         ))}
 
+        {/* Heatmap overlay: semi-transparent circles around hazard clusters */}
+        {showHeatmap && hazards.map((h) => {
+          const sev = SEVERITY_COLOR[h.severity] ?? "#64748b";
+          const radius = h.severity === "critical" ? 250 : h.severity === "high" ? 200 : h.severity === "moderate" ? 150 : 100;
+          return (
+            <Circle
+              key={`heat-${h.id}`}
+              center={[h.lat, h.lng]}
+              radius={radius}
+              pathOptions={{ color: sev, fillColor: sev, fillOpacity: 0.15, weight: 0 }}
+            />
+          );
+        })}
+
         {safeStops.map((s) => (
           <Marker key={s.id} position={[s.lat, s.lng]} icon={makeIcon("#16a34a", SAFE_STOP_ICON[s.type] ?? "🛡️")}>
             <Popup>
@@ -271,9 +287,20 @@ export default function RiderMap(props: RiderMapProps) {
         </div>
       )}
 
-      {/* Legend toggle (top-right) */}
+      {/* Heatmap + Legend toggle (top-right) */}
       <div className="absolute right-2 top-2 z-[500] flex items-center gap-1.5">
-        {/* Tile style switcher */}
+        {/* Heatmap toggle */}
+        <button
+          type="button"
+          onClick={() => setShowHeatmap((v) => !v)}
+          aria-label="Toggle hazard heatmap"
+          aria-pressed={showHeatmap}
+          className={`pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm backdrop-blur transition ${
+            showHeatmap ? "border-orange-400 bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400" : "bg-background/90 text-foreground hover:bg-accent"
+          }`}
+        >
+          <Flame className="h-4 w-4" />
+        </button>
         <div className="pointer-events-auto flex items-center gap-0.5 rounded-md border bg-background/90 p-0.5 shadow-sm backdrop-blur">
           {(["street", "dark", "satellite"] as const).map((s) => {
             const labels = { street: "Map", dark: "Dark", satellite: "Sat" };

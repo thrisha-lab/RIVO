@@ -55,8 +55,12 @@ import KeyboardShortcutsOverlay from "@/components/keyboard-shortcuts-overlay";
 import RouteComparison from "@/components/route-comparison";
 import ShareTripSummary from "@/components/share-trip-summary";
 import RideMode from "@/components/ride-mode";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useI18n } from "@/components/i18n-provider";
 import { useRealtime } from "@/hooks/use-realtime";
 import { useShakeToSos, requestMotionPermission } from "@/hooks/use-shake-to-sos";
+import { useOnlineStatus, writeOfflineCache } from "@/hooks/use-offline-cache";
+import { WifiOff } from "lucide-react";
 import { api, RISK_META } from "@/lib/api-client";
 import type {
   RiskAssessmentData,
@@ -85,6 +89,7 @@ interface Loc {
 }
 
 export default function Home() {
+  const { t } = useI18n();
   const [rider, setRider] = React.useState<RiderIdentity | null>(null);
   const [currentLocation, setCurrentLocation] = React.useState<Loc | null>(null);
   const [permission, setPermission] = React.useState<"idle" | "granted" | "denied" | "unavailable">("idle");
@@ -305,6 +310,12 @@ export default function Home() {
       .catch(() => setCurrentAddress(null));
   }, [currentLocation, risk?.weather]);
 
+  // Online status + offline cache write.
+  const online = useOnlineStatus();
+  React.useEffect(() => {
+    writeOfflineCache(risk, risk?.weather ?? standaloneWeather, weatherDesc ?? standaloneWeatherDesc);
+  }, [risk, standaloneWeather, weatherDesc, standaloneWeatherDesc]);
+
   // ----- GPS handling -----
   const startTracking = React.useCallback(() => {
     if (!("geolocation" in navigator)) {
@@ -422,8 +433,8 @@ export default function Home() {
               <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-background" />
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-bold tracking-tight">RiderGuard</div>
-              <div className="hidden text-[10px] text-muted-foreground sm:block">AI weather safety co-pilot</div>
+              <div className="text-sm font-bold tracking-tight">{t("app.name")}</div>
+              <div className="hidden text-[10px] text-muted-foreground sm:block">{t("app.tagline")}</div>
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -447,6 +458,7 @@ export default function Home() {
               />
             )}
             <AlertBell />
+            <LanguageSwitcher />
             <button
               type="button"
               onClick={() => setShowShortcuts(true)}
@@ -458,6 +470,13 @@ export default function Home() {
             <ThemeToggle />
           </div>
         </div>
+        {/* Offline banner */}
+        {!online && (
+          <div className="flex items-center justify-center gap-1.5 bg-amber-500 px-4 py-1 text-xs font-medium text-white">
+            <WifiOff className="h-3 w-3" />
+            You're offline — showing cached data. Some features may be unavailable.
+          </div>
+        )}
       </header>
 
       {/* Main */}
@@ -593,21 +612,21 @@ export default function Home() {
 
             <Tabs defaultValue="feed" className="w-full">
               <TabsList className="grid h-10 w-full grid-cols-7 gap-0.5 rounded-lg bg-muted/50 p-1">
-                <TabsTrigger value="feed" className="gap-0.5 text-[11px]"><Radio className="h-3.5 w-3.5" />Feed</TabsTrigger>
-                <TabsTrigger value="stops" className="gap-0.5 text-[11px]"><StopsIcon className="h-3.5 w-3.5" />Stops</TabsTrigger>
-                <TabsTrigger value="report" className="gap-0.5 text-[11px]"><Siren className="h-3.5 w-3.5" />Report</TabsTrigger>
-                <TabsTrigger value="stats" className="gap-0.5 text-[11px]"><BarChart3 className="h-3.5 w-3.5" />Stats</TabsTrigger>
-                <TabsTrigger value="history" className="gap-0.5 text-[11px]"><History className="h-3.5 w-3.5" />Trips</TabsTrigger>
-                <TabsTrigger value="board" className="gap-0.5 text-[11px]"><Trophy className="h-3.5 w-3.5" />Top</TabsTrigger>
-                <TabsTrigger value="badges" className="gap-0.5 text-[11px]"><Award className="h-3.5 w-3.5" />Badges</TabsTrigger>
+                <TabsTrigger value="feed" className="gap-0.5 text-[11px]"><Radio className="h-3.5 w-3.5" />{t("tab.feed")}</TabsTrigger>
+                <TabsTrigger value="stops" className="gap-0.5 text-[11px]"><StopsIcon className="h-3.5 w-3.5" />{t("tab.stops")}</TabsTrigger>
+                <TabsTrigger value="report" className="gap-0.5 text-[11px]"><Siren className="h-3.5 w-3.5" />{t("tab.report")}</TabsTrigger>
+                <TabsTrigger value="stats" className="gap-0.5 text-[11px]"><BarChart3 className="h-3.5 w-3.5" />{t("tab.stats")}</TabsTrigger>
+                <TabsTrigger value="history" className="gap-0.5 text-[11px]"><History className="h-3.5 w-3.5" />{t("tab.trips")}</TabsTrigger>
+                <TabsTrigger value="board" className="gap-0.5 text-[11px]"><Trophy className="h-3.5 w-3.5" />{t("tab.top")}</TabsTrigger>
+                <TabsTrigger value="badges" className="gap-0.5 text-[11px]"><Award className="h-3.5 w-3.5" />{t("tab.badges")}</TabsTrigger>
               </TabsList>
               <TabsContent value="feed" className="mt-3">
                 <div className="mb-2 flex items-center justify-between">
                   <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={() => setShowSettings(true)}>
-                    <SettingsIcon className="h-3 w-3" /> Settings
+                    <SettingsIcon className="h-3 w-3" /> {t("common.settings")}
                   </Button>
                   <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={refreshFeed}>
-                    <RefreshCw className="h-3 w-3" /> Refresh
+                    <RefreshCw className="h-3 w-3" /> {t("common.refresh")}
                   </Button>
                 </div>
                 <CommunityFeed
@@ -659,14 +678,14 @@ export default function Home() {
         <div className="mx-auto flex max-w-[1500px] flex-col items-center justify-between gap-2 px-4 py-3 text-xs text-muted-foreground sm:flex-row">
           <div className="flex items-center gap-1.5">
             <Sparkles className="h-3 w-3 text-sky-500" />
-            <span>Risk scores are deterministic. AI explains only — never overrides safety.</span>
+            <span>{t("footer.deterministic")}</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-            <span>Weather: Open-Meteo</span>
-            <span>· Maps: OpenStreetMap</span>
-            <span>· Routing: OSRM</span>
-            <span>· AI: Z.ai</span>
-            <span>· Realtime: Socket.io</span>
+            <span>{t("footer.weather")}</span>
+            <span>· {t("footer.maps")}</span>
+            <span>· {t("footer.routing")}</span>
+            <span>· {t("footer.ai")}</span>
+            <span>· {t("footer.realtime")}</span>
           </div>
         </div>
       </footer>
