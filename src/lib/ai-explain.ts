@@ -38,7 +38,10 @@ export async function explainRisk(opts: {
   const ctx = buildContext(opts);
 
   try {
-    const zai = await ZAI.create();
+    const zai = new (ZAI as any)({
+      baseUrl: process.env.ZAI_BASE_URL,
+      apiKey: process.env.ZAI_API_KEY,
+    });
     const res = await zai.chat.completions.create({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
