@@ -33,7 +33,7 @@ export interface RealtimeState {
 }
 
 /**
- * Hook to connect to the RiderGuard real-time service via the Caddy gateway.
+ * Hook to connect to the RIVO real-time service via the Caddy gateway.
  * Uses io("/?XTransformPort=3003") per gateway rules.
  */
 export function useRealtime(opts: {

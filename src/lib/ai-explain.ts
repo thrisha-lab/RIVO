@@ -11,7 +11,7 @@ import ZAI from "z-ai-web-dev-sdk";
 import type { RiskAssessmentResult, WeatherSnapshot } from "@/lib/risk-engine";
 import { describeWeatherCode } from "@/lib/weather-service";
 
-const SYSTEM_PROMPT = `You are RiderGuard, an AI weather-safety co-pilot for delivery riders (motorcycles, scooters, bicycles).
+const SYSTEM_PROMPT = `You are RIVO, an AI weather-safety co-pilot for delivery riders (motorcycles, scooters, bicycles).
 You receive a risk assessment that was ALREADY computed by a deterministic engine. Your job:
 - Explain WHY the risk level is what it is, in plain, calm, rider-friendly language.
 - Give 2-3 concrete, actionable safety tips for THIS specific trip and weather.

@@ -18,7 +18,7 @@ export async function searchPlaces(query: string, limit = 6): Promise<GeoResult[
   try {
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "RiderGuard/1.0 (delivery rider safety co-pilot)",
+        "User-Agent": "RIVO/1.0 (delivery rider safety co-pilot)",
         "Accept-Language": "en",
       },
       next: { revalidate: 30 },
@@ -48,7 +48,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   try {
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "RiderGuard/1.0 (delivery rider safety co-pilot)",
+        "User-Agent": "RIVO/1.0 (delivery rider safety co-pilot)",
         "Accept-Language": "en",
       },
       next: { revalidate: 60 },

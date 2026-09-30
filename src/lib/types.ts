@@ -1,5 +1,5 @@
 /**
- * Shared client-side types for RiderGuard.
+ * Shared client-side types for RIVO.
  */
 
 export type RiskLevel = "low" | "moderate" | "high" | "severe";

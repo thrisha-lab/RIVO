@@ -1,6 +1,6 @@
 {
-  "name": "RiderGuard — AI Weather Safety Co-pilot",
-  "short_name": "RiderGuard",
+  "name": "RIVO — AI Weather Safety Co-pilot",
+  "short_name": "RIVO",
   "description": "AI weather safety co-pilot for delivery riders. Deterministic risk scoring, hazard reporting, safe stops, and community intelligence.",
   "start_url": "/",
   "display": "standalone",

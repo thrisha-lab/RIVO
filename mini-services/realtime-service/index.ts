@@ -1,5 +1,5 @@
 /**
- * RiderGuard Real-time Service
+ * RIVO Real-time Service
  *
  * Socket.io mini-service on port 3003.
  * Handles:
@@ -195,7 +195,7 @@ setInterval(() => {
 
 const PORT = 3003;
 httpServer.listen(PORT, () => {
-  console.log(`[realtime] RiderGuard real-time service running on port ${PORT}`);
+  console.log(`[realtime] RIVO real-time service running on port ${PORT}`);
 });
 
 process.on("SIGTERM", () => {

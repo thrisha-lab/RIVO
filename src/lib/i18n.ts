@@ -1,5 +1,5 @@
 /**
- * RiderGuard i18n — lightweight translation system.
+ * RIVO i18n — lightweight translation system.
  *
  * Supports English (default) and Hindi. The language is stored in localStorage
  * and applies to all static UI strings. Dynamic data (weather descriptions,
@@ -22,7 +22,7 @@ type Dict = Record<string, string>;
 
 const en: Dict = {
   // Header
-  "app.name": "RiderGuard",
+  "app.name": "RIVO",
   "app.tagline": "AI weather safety co-pilot",
 
   // GPS
@@ -176,7 +176,7 @@ const en: Dict = {
   "footer.realtime": "Realtime: Socket.io",
 
   // Onboarding
-  "onboard.welcome": "Welcome to RiderGuard",
+  "onboard.welcome": "Welcome to RIVO",
   "onboard.welcomeBody": "Your AI weather safety co-pilot. We help delivery riders make safer travel decisions with real-time intelligence.",
   "onboard.setLocation": "Set your location & destination",
   "onboard.setLocationBody": "Tap \"Find me\" to share your GPS, then search or tap the map to set a destination. We'll compute a deterministic risk score for your trip.",
@@ -220,7 +220,7 @@ const en: Dict = {
 };
 
 const hi: Dict = {
-  "app.name": "RiderGuard",
+  "app.name": "RIVO",
   "app.tagline": "एआई मौसम सुरक्षा सहायक",
 
   "gps.title": "जीपीएस और स्थान",
@@ -359,7 +359,7 @@ const hi: Dict = {
   "footer.ai": "एआई: Z.ai",
   "footer.realtime": "रीयलटाइम: Socket.io",
 
-  "onboard.welcome": "RiderGuard में आपका स्वागत है",
+  "onboard.welcome": "RIVO में आपका स्वागत है",
   "onboard.welcomeBody": "आपका एआई मौसम सुरक्षा सह-पायलट। हम डिलीवरी राइडरों को वास्तविक समय खुफिया जानकारी के साथ सुरक्षित यात्रा निर्णय लेने में मदद करते हैं।",
   "onboard.setLocation": "अपना स्थान और गंतव्य सेट करें",
   "onboard.setLocationBody": "\"मुझे खोजें\" टैप करके अपना जीपीएस साझा करें, फिर गंतव्य सेट करने के लिए खोजें या मानचित्र टैप करें। हम आपकी यात्रा के लिए निर्धारित जोखिम स्कोर की गणना करेंगे।",

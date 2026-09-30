@@ -1,5 +1,5 @@
 /**
- * RiderGuard deterministic risk engine.
+ * RIVO deterministic risk engine.
  *
  * This is the SINGLE SOURCE OF TRUTH for risk scoring.
  * AI may NEVER compute or override this score — it may only explain it.

@@ -16,11 +16,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RiderGuard — AI Weather Safety Co-pilot for Delivery Riders",
+  title: "RIVO — AI Weather Safety Co-pilot for Delivery Riders",
   description:
-    "RiderGuard helps delivery riders make safer travel decisions with weather intelligence, route analysis, hazard reporting, community rider intelligence, safe stops, and AI explanations.",
+    "RIVO helps delivery riders make safer travel decisions with weather intelligence, route analysis, hazard reporting, community rider intelligence, safe stops, and AI explanations.",
   keywords: [
-    "RiderGuard",
+    "RIVO",
     "delivery rider safety",
     "weather safety",
     "route risk",
@@ -29,18 +29,18 @@ export const metadata: Metadata = {
     "safe stops",
     "AI co-pilot",
   ],
-  authors: [{ name: "RiderGuard" }],
+  authors: [{ name: "RIVO" }],
   icons: { icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg" },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "RiderGuard",
+    title: "RIVO",
     statusBarStyle: "default",
   },
   openGraph: {
-    title: "RiderGuard — AI Weather Safety Co-pilot",
+    title: "RIVO — AI Weather Safety Co-pilot",
     description: "Safer rides for delivery riders with weather, hazard & route intelligence.",
-    siteName: "RiderGuard",
+    siteName: "RIVO",
     type: "website",
   },
 };

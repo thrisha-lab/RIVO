@@ -1,5 +1,5 @@
 /**
- * API integration tests for RiderGuard.
+ * API integration tests for RIVO.
  *
  * These tests verify the API response shapes and business logic by calling
  * the route handlers directly (no HTTP server needed). They mock the database

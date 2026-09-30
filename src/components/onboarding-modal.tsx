@@ -13,7 +13,7 @@ interface Props {
 const STEPS = [
   {
     icon: <Shield className="h-10 w-10 text-sky-500" />,
-    title: "Welcome to RiderGuard",
+    title: "Welcome to RIVO",
     body: "Your AI weather safety co-pilot. We help delivery riders make safer travel decisions with real-time intelligence.",
     bg: "from-sky-500/10 to-emerald-500/10",
   },

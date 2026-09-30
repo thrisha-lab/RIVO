@@ -22,7 +22,7 @@ export default function ShareTripSummary({ risk, destinationLabel, open, onClose
 
   const meta = RISK_META[risk.level];
   const lines: string[] = [];
-  lines.push("🛡️ RiderGuard Trip Risk Summary");
+  lines.push("🛡️ RIVO Trip Risk Summary");
   lines.push("");
   lines.push(`Risk Score: ${risk.score}/100 ${meta.emoji} ${meta.label}`);
   if (risk.route) {
@@ -64,7 +64,7 @@ export default function ShareTripSummary({ risk, destinationLabel, open, onClose
   const share = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: "RiderGuard Trip Risk", text });
+        await navigator.share({ title: "RIVO Trip Risk", text });
         onClose();
       } catch {
         /* user cancelled */

@@ -57,7 +57,7 @@ export default function VoiceAlertsToggle({ risk, enabled, onToggle }: Props) {
         u.rate = 1.0;
         window.speechSynthesis.speak(u);
         toast.success("Voice alerts enabled", {
-          description: "RiderGuard will speak risk changes hands-free.",
+          description: "RIVO will speak risk changes hands-free.",
         });
       } else {
         toast.error("Voice synthesis not supported in this browser.");

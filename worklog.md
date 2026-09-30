@@ -1,6 +1,7 @@
-# RiderGuard — Project Worklog
+# RIVO — Project Worklog
+(formerly RiderGuard — renamed to RIVO)
 
-This is the shared handover document for RiderGuard. Each phase appends a new
+This is the shared handover document for RIVO. Each phase appends a new
 section below (separated by `---`). Read previous sections before starting
 new work to understand actual progress.
 

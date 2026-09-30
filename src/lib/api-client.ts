@@ -1,5 +1,5 @@
 /**
- * Typed client for RiderGuard API. Uses relative paths only.
+ * Typed client for RIVO API. Uses relative paths only.
  */
 import type {
   RiskAssessmentData,

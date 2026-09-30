@@ -1,4 +1,4 @@
-// RiderGuard — Prisma schema
+// RIVO — Prisma schema
 // AI weather safety co-pilot for delivery riders.
 // The risk engine is the deterministic source of truth. AI only explains.
 

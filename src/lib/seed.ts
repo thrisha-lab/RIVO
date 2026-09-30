@@ -1,5 +1,5 @@
 /**
- * Seed RiderGuard database with safe stops and a couple of demo hazards.
+ * Seed RIVO database with safe stops and a couple of demo hazards.
  * Run with: bun run src/lib/seed.ts
  */
 import { db } from "@/lib/db";

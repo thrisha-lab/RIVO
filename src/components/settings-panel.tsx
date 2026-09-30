@@ -76,13 +76,13 @@ export default function SettingsPanel({ onClose, onAccountDeleted }: Props) {
     const data = {
       profile: settings,
       exportedAt: new Date().toISOString(),
-      note: "Your RiderGuard data export. Delete this account via Settings to remove all data from our servers.",
+      note: "Your RIVO data export. Delete this account via Settings to remove all data from our servers.",
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `riderguard-data-${settings.displayName}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `rivo-data-${settings.displayName}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Data exported.");
