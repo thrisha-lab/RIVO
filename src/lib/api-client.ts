@@ -33,8 +33,24 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
-  const json = (await res.json()) as { ok: boolean; data?: T; error?: string };
-  if (!json.ok) throw new Error(json.error ?? "Request failed");
+  const text = await res.text();
+
+  if (!text.trim()) {
+    throw new Error(`Request failed: HTTP ${res.status} ${res.statusText}`);
+  }
+
+  let json: { ok: boolean; data?: T; error?: string };
+
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid API response: HTTP ${res.status} ${res.statusText}`);
+  }
+
+  if (!res.ok || !json.ok) {
+    throw new Error(json.error ?? `Request failed: HTTP ${res.status} ${res.statusText}`);
+  }
+
   return json.data as T;
 }
 
@@ -131,8 +147,33 @@ export const api = {
     const form = new FormData();
     form.append("image", file);
     const res = await fetch("/api/hazards/upload", { method: "POST", body: form, credentials: "same-origin" });
-    const json = (await res.json()) as { ok: boolean; data?: { imageUrl: string; filename: string; size: number; contentType: string }; error?: string };
-    if (!json.ok) throw new Error(json.error ?? "Upload failed");
+    const text = await res.text();
+
+    if (!text.trim()) {
+      throw new Error(`Upload failed: HTTP ${res.status} ${res.statusText}`);
+    }
+
+    let json: {
+      ok: boolean;
+      data?: {
+        imageUrl: string;
+        filename: string;
+        size: number;
+        contentType: string;
+      };
+      error?: string;
+    };
+
+    try {
+  json = JSON.parse(text);
+    } catch {
+      throw new Error(`Invalid upload response: HTTP ${res.status} ${res.statusText}`);
+    }
+
+    if (!res.ok || !json.ok) {
+      throw new Error(json.error ?? `Upload failed: HTTP ${res.status} ${res.statusText}`);
+    }
+
     return json.data!;
   },
 
