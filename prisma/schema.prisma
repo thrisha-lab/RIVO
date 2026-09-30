@@ -3,11 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-/// Anonymous rider identity. No email/password — secure opaque token only.
+/// Anonymous rider identity. No email/password â€” secure opaque token only.
 model Rider {
   id              String                @id @default(cuid())
   /// Hashed opaque token (never store raw). Used for auth.
@@ -86,7 +86,7 @@ model FavoriteDestination {
   label      String
   lat        Float
   lng        Float
-  emoji      String   @default("📍")
+  emoji      String   @default("ðŸ“")
   createdAt  DateTime @default(now())
   lastUsedAt DateTime @default(now())
   rider      Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
@@ -143,7 +143,7 @@ model TrackingSession {
   @@index([status])
 }
 
-/// GPS trail — separate from searched destinations (privacy: locations only).
+/// GPS trail â€” separate from searched destinations (privacy: locations only).
 model GpsPoint {
   id         String          @id @default(cuid())
   sessionId  String
@@ -161,7 +161,7 @@ model GpsPoint {
   @@index([riderId])
 }
 
-/// Searched/selected destinations — explicitly chosen by rider (not GPS).
+/// Searched/selected destinations â€” explicitly chosen by rider (not GPS).
 model Destination {
   id        String   @id @default(cuid())
   riderId   String
@@ -175,7 +175,7 @@ model Destination {
   @@index([riderId])
 }
 
-/// Community hazard reports. Lifecycle: active → disputed → resolved/expired.
+/// Community hazard reports. Lifecycle: active â†’ disputed â†’ resolved/expired.
 model HazardReport {
   id           String       @id @default(cuid())
   reporterId   String
@@ -246,7 +246,7 @@ model WeatherCache {
   @@index([lat, lng])
 }
 
-/// Persisted risk assessments — deterministic, source of truth.
+/// Persisted risk assessments â€” deterministic, source of truth.
 model RiskAssessment {
   id             String           @id @default(cuid())
   riderId        String
@@ -266,3 +266,4 @@ model RiskAssessment {
   @@index([riderId])
   @@index([createdAt])
 }
+
