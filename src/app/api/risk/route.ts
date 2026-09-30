@@ -99,7 +99,11 @@ export async function GET(req: NextRequest) {
   // Cheap approach: sample the polyline and query DB by bbox.
   let activeCount = 0;
   let severeCount = 0;
-  const samplePoints = route && route.geometry.length > 1 ? route.geometry : [{ lat: centerLat!, lng: centerLng! }];
+  const samplePoints =
+  route && route.geometry.length > 1
+    ? pickSamplePoints(route.geometry, 20)
+    : [{ lat: centerLat!, lng: centerLng! }];
+
   const seen = new Set<string>();
   for (const sp of samplePoints) {
     const dLat = 0.0045; // ~500m
@@ -205,4 +209,20 @@ function pickSampleIndices(len: number, n: number): number[] {
     out.push(Math.round((i * (len - 1)) / (n - 1)));
   }
   return out;
+}
+function pickSamplePoints(
+  points: { lat: number; lng: number }[],
+  max: number
+) {
+  if (points.length <= max) return points;
+
+  const result: { lat: number; lng: number }[] = [];
+
+  for (let i = 0; i < max; i++) {
+    result.push(
+      points[Math.round((i * (points.length - 1)) / (max - 1))]
+    );
+  }
+
+  return result;
 }
